@@ -41,4 +41,4 @@ app.listen(PORT, () => {
 });
 
 export { app };
-export { type Database };
+export type { Database };
