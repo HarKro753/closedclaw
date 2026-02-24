@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 import type { Database } from "bun:sqlite";
 import { provisionAgent } from "../agent-provisioner.js";
+import { getGatewayClient } from "../lib/openclaw-client.js";
 import { authMiddleware } from "../middleware/auth.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
 
@@ -65,6 +66,26 @@ export function createAuthRouter(db: Database): Router {
       ).run(userId, email.toLowerCase(), passwordHash, name, isAdmin);
 
       provisionAgent(db, userId, { userName: name, userEmail: email.toLowerCase() });
+
+      const sessionKey = `closedclaw:user:${userId}`;
+
+      try {
+        const gateway = getGatewayClient();
+        const result = await gateway.createAgent({ name });
+        const openclawAgentId = result?.agentId ?? result?.id ?? null;
+
+        if (openclawAgentId) {
+          db.prepare("UPDATE agents SET openclaw_agent_id = ?, openclaw_session_key = ? WHERE user_id = ?")
+            .run(openclawAgentId, sessionKey, userId);
+
+          await gateway.setAgentFile(openclawAgentId, "USER.md", `# ${name}\n\nEmail: ${email}\n`);
+        }
+      } catch (err) {
+        console.error("Gateway agent creation failed (non-fatal):", err instanceof Error ? err.message : String(err));
+      }
+
+      db.prepare("UPDATE agents SET openclaw_session_key = ? WHERE user_id = ?")
+        .run(sessionKey, userId);
 
       const secret = process.env["JWT_SECRET"];
       if (!secret) {
