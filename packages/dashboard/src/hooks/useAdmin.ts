@@ -12,6 +12,7 @@ interface AdminUser {
   active: boolean;
   messageCount: number;
   agentStatus: string;
+  gatewayConfigured: boolean;
 }
 
 interface AdminStats {
@@ -57,6 +58,11 @@ interface SkillsResponse {
 
 interface MemoryResponse {
   memory: string;
+}
+
+interface CreateUserResponse {
+  user: { id: string; email: string; name: string };
+  temporaryPassword?: string;
 }
 
 export function useAdmin(token: string | null) {
@@ -137,6 +143,61 @@ export function useAdmin(token: string | null) {
     [token, loadUsers]
   );
 
+  const createUser = useCallback(
+    async (params: {
+      name: string;
+      email: string;
+      password?: string;
+      gateway_url?: string;
+      gateway_token?: string;
+      is_admin?: boolean;
+    }): Promise<CreateUserResponse | null> => {
+      if (!token) return null;
+
+      const { data, error: fetchError } = await apiFetch<CreateUserResponse>(
+        "/admin/users",
+        {
+          method: "POST",
+          body: params as Record<string, unknown>,
+          token,
+        }
+      );
+
+      if (fetchError || !data) {
+        setError(fetchError ?? "Failed to create user");
+        return null;
+      }
+
+      await loadUsers();
+      return data;
+    },
+    [token, loadUsers]
+  );
+
+  const updateUserGateway = useCallback(
+    async (userId: string, gatewayUrl: string, gatewayToken?: string): Promise<boolean> => {
+      if (!token) return false;
+
+      const { error: fetchError } = await apiFetch(
+        `/admin/users/${userId}/gateway`,
+        {
+          method: "PATCH",
+          body: { gateway_url: gatewayUrl, gateway_token: gatewayToken },
+          token,
+        }
+      );
+
+      if (fetchError) {
+        setError(fetchError);
+        return false;
+      }
+
+      await loadUsers();
+      return true;
+    },
+    [token, loadUsers]
+  );
+
   const loadAgentSkills = useCallback(
     async (userId: string): Promise<Skill[]> => {
       if (!token) return [];
@@ -187,6 +248,8 @@ export function useAdmin(token: string | null) {
     loadStats,
     loadActivity,
     deactivateUser,
+    createUser,
+    updateUserGateway,
     loadAgentSkills,
     loadAgentMemory,
     clearError,

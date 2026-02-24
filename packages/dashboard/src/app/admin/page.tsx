@@ -42,6 +42,8 @@ export default function AdminPage() {
     loadStats,
     loadActivity,
     deactivateUser,
+    createUser,
+    updateUserGateway,
     loadAgentSkills,
     loadAgentMemory,
     clearError,
@@ -235,6 +237,8 @@ export default function AdminPage() {
             onLoadMemory={loadAgentMemory}
             onLoadSkills={loadAgentSkills}
             onSendTask={handleSendTask}
+            onCreateUser={createUser}
+            onUpdateGateway={updateUserGateway}
           />
         )}
 
