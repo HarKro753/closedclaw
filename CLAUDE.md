@@ -4,7 +4,7 @@ You prioritize code, which is easy to read over code that is quick to write.
 Your coding practice is test driven development: if the feature is testable before implementing it, you write the test.
 
 <project-structure>
-- src/
+- src/ (Frontend - Next.js)
   - app/ 
   - assets/ (Static assets like images)
   - components/ (Reusable UI components)
@@ -12,7 +12,27 @@ Your coding practice is test driven development: if the feature is testable befo
   - hooks/ (Custom React hooks)
   - utils/ (Shared utility functions)
   - middleware.ts (Route protection and request handling)
-</project-structure>
+
+- packages/backend/src/ (Backend - Agentic Travel API)
+  - agent/ (Agent orchestration)
+    - loop.ts (namespace AgentLoop — streaming agentic loop)
+    - prompt.ts (namespace PromptBuilder — system prompt assembly)
+    - session.ts (namespace Session — Anthropic API client)
+  - tools/ (Tool layer — thin wrappers)
+    - registry.ts (namespace ToolRegistry — tool registration and dispatch)
+    - \*.tool.ts (one namespace per tool — parse args, call service, return JSON)
+  - services/ (Business logic — all state and I/O)
+    - \*.service.ts (one namespace per service — owns data, calls external APIs)
+  - models/ (Types only — no logic)
+    - \*.ts (interfaces and type aliases, NO namespaces)
+  - utils/ (Pure functions — no I/O, no state)
+    - \*.ts (one namespace per file)
+  - templates/ (Static text files read at runtime)
+    - _.txt, _.md
+  - index.ts (Entry point — namespace-free, wires config → services → Bun.serve)
+  - api.ts (namespace Api — HTTP routing and request handling)
+  - config.ts (namespace Config — environment variable loading)
+    </project-structure>
 
 <rules>
 - prefer explicit if/else blocks over inline ternary operators for complex logic
@@ -38,7 +58,55 @@ Your coding practice is test driven development: if the feature is testable befo
 - use import type {...} when importing symbols only as types
 - use export type when re-exporting types
 - all class fields should be private; expose content through getter and setter methods
+- use models as a central data model preferably going troughout the whole codebase. Dont mix models with services or tools or utils they should be separate
+- dont define many small models rather a single big one with nested small models
+- use services for containing logic
+- define long pure text files as .txt files in the same directory and read them with bun
+- keep directory structure flat, only 1 level deep, not more
 </rules>
+
+<backend-namespaces>
+- every file MUST wrap ALL exports and internal logic in a single `export namespace`
+- the ONLY exceptions are models/ files (plain exported interfaces/types) and index.ts
+- NOTHING lives outside the namespace: no constants, no helper functions, no side-effect calls
+- private helpers and constants go inside the namespace as non-exported members
+- models/ files NEVER have namespaces — they export interfaces and types directly
+</backend-namespaces>
+
+<backend-models>
+- ALL types and interfaces MUST be defined in models/ — nowhere else
+- no inline interface definitions inside tool functions, service methods, or utils
+- if a function needs a type for an API response, that type goes in models/
+- models/ files contain ZERO logic — only type definitions
+</backend-models>
+
+<backend-services>
+- services contain business logic, state management, and external API calls
+- tools and other consumers import the service namespace directly and call its methods
+  Good: `SessionStore.getTrip(sessionId)`, `UserContext.read(fileName)`
+  Bad: returning instance objects or closures for consumers to call
+- pass identifying parameters (like sessionId) to service methods — dont create wrapper instances
+</backend-services>
+
+<backend-tools>
+- tools are thin wrappers: parse args → call service → return JSON string
+- tools import service namespaces directly (e.g. `import { SessionStore } from "../services/..."`)
+- tools should be readable at a glance — a developer should understand what a tool does without reading the service code
+</backend-tools>
+
+<backend-utils>
+- utils contain ONLY pure functions — no I/O, no state, no side effects
+- utils import from models/ for type definitions
+- utils NEVER import from services/ or tools/
+</backend-utils>
+
+<backend-imports>
+- tools → services, utils, models
+- services → utils, models
+- utils → models only
+- models → models only (for type composition)
+- NO circular dependencies
+</backend-imports>
 
 <security>
 - validate and sanitize all user inputs server-side
