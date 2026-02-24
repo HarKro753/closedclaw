@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { API_BASE_URL } from "@/constants/api";
 import { apiFetch } from "@/utils/api";
 
 interface ChatMessage {
@@ -14,9 +15,21 @@ interface HistoryResponse {
   messages: ChatMessage[];
 }
 
-interface SendResponse {
-  response: string;
+interface SSEChunkEvent {
+  type: "chunk";
+  content: string;
 }
+
+interface SSEDoneEvent {
+  type: "done";
+}
+
+interface SSEErrorEvent {
+  type: "error";
+  message: string;
+}
+
+type SSEEvent = SSEChunkEvent | SSEDoneEvent | SSEErrorEvent;
 
 export function useChat(token: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -56,44 +69,89 @@ export function useChat(token: string | null) {
     async (content: string) => {
       if (!token || sending) return;
 
-      const optimisticId = `temp-${Date.now()}`;
       const userMessage: ChatMessage = {
-        id: optimisticId,
+        id: `temp-${Date.now()}`,
         role: "user",
         content,
         createdAt: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, userMessage]);
-      setSending(true);
-      setError(null);
-
-      const { data, error: sendError } = await apiFetch<SendResponse>(
-        "/agent/message",
-        {
-          method: "POST",
-          body: { message: content },
-          token,
-        }
-      );
-
-      if (sendError || !data) {
-        setError(sendError ?? "Failed to send message");
-        setSending(false);
-        return;
-      }
-
+      const assistantMessageId = `resp-${Date.now()}`;
       const assistantMessage: ChatMessage = {
-        id: `resp-${Date.now()}`,
+        id: assistantMessageId,
         role: "assistant",
-        content: data.response,
+        content: "",
         createdAt: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      setSending(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/agent/message/stream`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ message: content }),
+        });
+
+        if (!response.ok) {
+          const json = (await response.json()) as { error?: string };
+          setError(json.error ?? `Request failed with status ${response.status}`);
+          setSending(false);
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          setError("Failed to read stream response");
+          setSending(false);
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6);
+            try {
+              const event = JSON.parse(jsonStr) as SSEEvent;
+              if (event.type === "chunk") {
+                setMessages((prev) =>
+                  prev.map((msg) => {
+                    if (msg.id === assistantMessageId) {
+                      return { ...msg, content: msg.content + event.content };
+                    }
+                    return msg;
+                  }),
+                );
+              } else if (event.type === "error") {
+                setError(event.message);
+              }
+            } catch {
+              // skip malformed SSE lines
+            }
+          }
+        }
+      } catch {
+        setError("Network error: unable to reach the server");
+      }
+
       setSending(false);
     },
-    [token, sending]
+    [token, sending],
   );
 
   const clearHistory = useCallback(async () => {

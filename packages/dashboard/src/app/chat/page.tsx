@@ -155,6 +155,7 @@ export default function ChatPage() {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
+                  data-testid={msg.role === "user" ? "user-message" : "agent-message"}
                   className={`animate-fade-in flex ${
                     msg.role === "user" ? "justify-end" : "justify-start"
                   }`}
@@ -207,6 +208,7 @@ export default function ChatPage() {
             className="mx-auto flex max-w-3xl gap-2"
           >
             <textarea
+              data-testid="chat-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -221,6 +223,7 @@ export default function ChatPage() {
               }}
             />
             <button
+              data-testid="send-button"
               type="submit"
               disabled={sending || input.trim().length === 0}
               className="rounded-md px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
