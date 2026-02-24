@@ -9,3 +9,7 @@ data/
 .turbo/
 coverage/
 package-lock.json
+test-results/
+playwright-report/
+e2e-*.png
+e2e-result.png
