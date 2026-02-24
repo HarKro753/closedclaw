@@ -12,12 +12,21 @@ function readFileIfExists(filePath: string): string | null {
   return content;
 }
 
-function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+function getDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getTodayDateString(): string {
+  return getDateString(new Date());
+}
+
+function getYesterdayDateString(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return getDateString(yesterday);
 }
 
 export function buildSystemPrompt(workspaceDir: string): string {
@@ -55,6 +64,14 @@ export function buildSystemPrompt(workspaceDir: string): string {
   if (memoryContent) {
     sections.push("## Your Long-Term Memory");
     sections.push(memoryContent);
+    sections.push("");
+  }
+
+  const yesterdayFile = join(agentDir, "memory", `${getYesterdayDateString()}.md`);
+  const yesterdayContent = readFileIfExists(yesterdayFile);
+  if (yesterdayContent) {
+    sections.push("## Yesterday's Notes");
+    sections.push(yesterdayContent);
     sections.push("");
   }
 

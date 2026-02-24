@@ -8,11 +8,26 @@ import {
   unlinkSync,
 } from "node:fs";
 import { execSync } from "node:child_process";
-import { join, resolve, relative } from "node:path";
+import { join, resolve, relative, dirname } from "node:path";
 import { z } from "zod";
 import { tool, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 
 const SERVER_NAME = "closedclaw";
+
+function getDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayDateString(): string {
+  return getDateString(new Date());
+}
+
+function getAgentDir(workspaceDir: string): string {
+  return join(workspaceDir, "..");
+}
 
 function validatePath(workspaceDir: string, requestedPath: string): string {
   const absoluteWorkspace = resolve(workspaceDir);
@@ -36,6 +51,7 @@ interface ToolInput {
   command?: string;
   url?: string;
   maxChars?: number;
+  maxResults?: number;
 }
 
 export async function executeTool(
@@ -242,6 +258,79 @@ async function executeToolInner(
       return `File deleted successfully: ${path}`;
     }
 
+    case "memory_daily_write": {
+      const { content } = input;
+      if (!content) {
+        return "Error: content is required";
+      }
+      const agentDir = getAgentDir(workspaceDir);
+      const memoryDir = join(agentDir, "memory");
+      if (!existsSync(memoryDir)) {
+        mkdirSync(memoryDir, { recursive: true });
+      }
+      const dailyFile = join(memoryDir, `${getTodayDateString()}.md`);
+      const existing = existsSync(dailyFile) ? readFileSync(dailyFile, "utf-8") : "";
+      const separator = existing.length > 0 ? "\n" : "";
+      writeFileSync(dailyFile, existing + separator + content, "utf-8");
+      return `Daily note updated for ${getTodayDateString()}`;
+    }
+
+    case "memory_daily_read": {
+      const agentDir = getAgentDir(workspaceDir);
+      const dailyFile = join(agentDir, "memory", `${getTodayDateString()}.md`);
+      if (!existsSync(dailyFile)) {
+        return "(no daily notes for today)";
+      }
+      const content = readFileSync(dailyFile, "utf-8");
+      if (content.trim().length === 0) {
+        return "(no daily notes for today)";
+      }
+      return content;
+    }
+
+    case "memory_search": {
+      const { query, maxResults } = input;
+      if (!query) {
+        return "Error: query is required";
+      }
+      const limit = maxResults ?? 20;
+      const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const agentDir = getAgentDir(workspaceDir);
+      const results: string[] = [];
+
+      const memoryMdPath = join(agentDir, "MEMORY.md");
+      if (existsSync(memoryMdPath)) {
+        const lines = readFileSync(memoryMdPath, "utf-8").split("\n");
+        for (let i = 0; i < lines.length && results.length < limit; i++) {
+          const lower = lines[i]!.toLowerCase();
+          if (queryWords.some((w) => lower.includes(w))) {
+            results.push(`MEMORY.md:${i + 1}: ${lines[i]}`);
+          }
+        }
+      }
+
+      const memoryDir = join(agentDir, "memory");
+      if (existsSync(memoryDir)) {
+        const files = readdirSync(memoryDir).filter((f) => f.endsWith(".md"));
+        for (const file of files) {
+          if (results.length >= limit) break;
+          const filePath = join(memoryDir, file);
+          const lines = readFileSync(filePath, "utf-8").split("\n");
+          for (let i = 0; i < lines.length && results.length < limit; i++) {
+            const lower = lines[i]!.toLowerCase();
+            if (queryWords.some((w) => lower.includes(w))) {
+              results.push(`memory/${file}:${i + 1}: ${lines[i]}`);
+            }
+          }
+        }
+      }
+
+      if (results.length === 0) {
+        return "No matching memory entries found";
+      }
+      return results.join("\n");
+    }
+
     default:
       return `Error: unknown tool: ${toolName}`;
   }
@@ -446,6 +535,38 @@ function buildSdkTools(workspaceDir: string, memoryFile: string) {
         return { content: [{ type: "text" as const, text: result }] };
       },
     ),
+    tool(
+      "memory_daily_write",
+      "Append a note to today's daily memory file. Creates the file if it doesn't exist.",
+      {
+        content: z.string().describe("The content to append to today's daily note"),
+      },
+      async (args: { content: string }) => {
+        const result = await executeTool("memory_daily_write", args, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      },
+    ),
+    tool(
+      "memory_daily_read",
+      "Read today's daily memory notes.",
+      {},
+      async () => {
+        const result = await executeTool("memory_daily_read", {}, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      },
+    ),
+    tool(
+      "memory_search",
+      "Search through MEMORY.md and all daily memory files. Returns matching lines with file:line context.",
+      {
+        query: z.string().describe("Search query — lines containing any of these words (case-insensitive) will match"),
+        maxResults: z.number().optional().describe("Maximum number of results to return (default 20)"),
+      },
+      async (args: { query: string; maxResults?: number }) => {
+        const result = await executeTool("memory_search", args, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      },
+    ),
   ];
 }
 
@@ -470,6 +591,9 @@ export function getAllowedToolNames(): string[] {
     "bash",
     "web_fetch",
     "delete_file",
+    "memory_daily_write",
+    "memory_daily_read",
+    "memory_search",
   ];
   return toolNames.map((name) => `mcp__${SERVER_NAME}__${name}`);
 }
