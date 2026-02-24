@@ -1,8 +1,10 @@
 import { Router } from "express";
 import type { Database } from "bun:sqlite";
-import { getGatewayClient } from "../lib/openclaw-client.js";
+import { getClientForUser, evictClient } from "../lib/gateway-pool.js";
+import { provisionGatewayAgent } from "../lib/provision.js";
 import { authMiddleware } from "../middleware/auth.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
+import type { OpenClawClient } from "../lib/openclaw-client.js";
 
 interface MessageRow {
   id: number;
@@ -11,17 +13,23 @@ interface MessageRow {
   created_at: string;
 }
 
-interface AgentRow {
-  openclaw_session_key: string | null;
-  openclaw_agent_id: string | null;
-}
-
 function getSessionKey(db: Database, userId: string): string {
   const row = db
     .prepare("SELECT openclaw_session_key FROM agents WHERE user_id = ?")
     .get(userId) as { openclaw_session_key?: string } | undefined;
 
   return row?.openclaw_session_key ?? `closedclaw:user:${userId}`;
+}
+
+function getUserGatewayClient(db: Database, userId: string): OpenClawClient {
+  const agent = db
+    .prepare("SELECT gateway_url, gateway_token FROM agents WHERE user_id = ?")
+    .get(userId) as { gateway_url: string | null; gateway_token: string | null } | undefined;
+
+  const url = agent?.gateway_url ?? process.env["OPENCLAW_GATEWAY_URL"] ?? "ws://127.0.0.1:18789";
+  const token = agent?.gateway_token ?? process.env["OPENCLAW_AUTH_TOKEN"];
+
+  return getClientForUser(userId, { url, token });
 }
 
 export function createAgentRouter(db: Database): Router {
@@ -49,7 +57,7 @@ export function createAgentRouter(db: Database): Router {
       ).run(req.user.userId, message);
 
       try {
-        const gateway = getGatewayClient();
+        const gateway = getUserGatewayClient(db, req.user.userId);
 
         const historyBefore = await gateway.getChatHistory(sessionKey, 100);
         const assistantCountBefore = historyBefore.filter(m => m.role === "assistant").length;
@@ -106,7 +114,7 @@ export function createAgentRouter(db: Database): Router {
       const sessionKey = getSessionKey(db, req.user.userId);
 
       try {
-        const gateway = getGatewayClient();
+        const gateway = getUserGatewayClient(db, req.user.userId);
         await gateway.connect();
 
         db.prepare(
@@ -135,7 +143,7 @@ export function createAgentRouter(db: Database): Router {
             if (fullResponse) {
               db.prepare(
                 "INSERT INTO messages (user_id, role, content) VALUES (?, 'assistant', ?)"
-              ).run(req.user.userId, fullResponse);
+              ).run(req.user!.userId, fullResponse);
             }
             res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
             res.end();
@@ -156,13 +164,13 @@ export function createAgentRouter(db: Database): Router {
               res.write(`data: ${JSON.stringify({ type: "chunk", content: fullResponse })}\n\n`);
               db.prepare(
                 "INSERT INTO messages (user_id, role, content) VALUES (?, 'assistant', ?)"
-              ).run(req.user.userId, fullResponse);
+              ).run(req.user!.userId, fullResponse);
             }
             res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
             res.end();
           }
         }, 60000);
-      } catch (err) {
+      } catch {
         res.write(`data: ${JSON.stringify({ type: "error", message: "Gateway unavailable" })}\n\n`);
         res.end();
       }
@@ -206,13 +214,91 @@ export function createAgentRouter(db: Database): Router {
     res.json({ success: true });
   });
 
-  router.get("/gateway-status", async (_req, res) => {
+  router.get("/gateway-status", async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const agent = db
+      .prepare("SELECT gateway_url, gateway_token, status FROM agents WHERE user_id = ?")
+      .get(req.user.userId) as { gateway_url: string | null; gateway_token: string | null; status: string } | undefined;
+
+    if (!agent?.gateway_url) {
+      const fallbackUrl = process.env["OPENCLAW_GATEWAY_URL"];
+      if (!fallbackUrl) {
+        res.json({ configured: false, connected: false, status: "pending", message: "No gateway configured. Add your OpenClaw gateway URL in settings." });
+        return;
+      }
+
+      try {
+        const client = getUserGatewayClient(db, req.user.userId);
+        await client.health();
+        res.json({ configured: false, connected: true, status: "connected" });
+      } catch {
+        res.json({ configured: false, connected: false, status: "error" });
+      }
+      return;
+    }
+
     try {
-      const gateway = getGatewayClient();
-      await gateway.health();
-      res.json({ connected: true });
+      const client = getUserGatewayClient(db, req.user.userId);
+      await client.health();
+      db.prepare("UPDATE agents SET status = 'connected', last_connected_at = datetime('now') WHERE user_id = ?")
+        .run(req.user.userId);
+      res.json({ configured: true, connected: true, status: "connected", url: agent.gateway_url });
     } catch {
-      res.json({ connected: false });
+      db.prepare("UPDATE agents SET status = 'error' WHERE user_id = ?").run(req.user.userId);
+      res.json({ configured: true, connected: false, status: "error", url: agent.gateway_url });
+    }
+  });
+
+  router.patch("/gateway", async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { gateway_url, gateway_token } = req.body as { gateway_url: string; gateway_token?: string };
+
+    if (!gateway_url) {
+      res.status(400).json({ error: "gateway_url required" });
+      return;
+    }
+
+    evictClient(req.user.userId);
+    db.prepare("UPDATE agents SET gateway_url = ?, gateway_token = ?, status = 'pending' WHERE user_id = ?")
+      .run(gateway_url, gateway_token ?? null, req.user.userId);
+
+    const user = db.prepare("SELECT name FROM users WHERE id = ?").get(req.user.userId) as { name: string } | undefined;
+    if (user) {
+      provisionGatewayAgent(req.user.userId, gateway_url, gateway_token, user.name, db).catch(console.error);
+    }
+
+    res.json({ success: true });
+  });
+
+  router.post("/gateway/test", async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { gateway_url, gateway_token } = req.body as { gateway_url: string; gateway_token?: string };
+
+    if (!gateway_url) {
+      res.status(400).json({ error: "gateway_url required" });
+      return;
+    }
+
+    try {
+      const testClient = getClientForUser(`test:${req.user.userId}`, { url: gateway_url, token: gateway_token });
+      await testClient.health();
+      evictClient(`test:${req.user.userId}`);
+      res.json({ success: true, message: "Connection successful" });
+    } catch {
+      evictClient(`test:${req.user.userId}`);
+      res.json({ success: false, message: "Connection failed. Check the URL and token." });
     }
   });
 
