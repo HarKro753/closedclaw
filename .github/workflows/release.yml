@@ -3,7 +3,7 @@ name: Release CLI to npm
 on:
   push:
     tags:
-      - "cli-v*"
+      - "v*"
 
 jobs:
   publish:
