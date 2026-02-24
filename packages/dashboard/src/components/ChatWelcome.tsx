@@ -1,12 +1,16 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { Hexagon } from "lucide-react";
 
-const SUGGESTIONS = [
-  "Write code",
-  "Research",
-  "Brainstorm",
-  "Summarize",
+const CAPABILITIES = [
+  "Bash",
+  "Edit Files",
+  "Web Search",
+  "Memory",
+  "Skills",
+  "Browser",
+  "Fetch URL",
+  "Daily Notes",
 ];
 
 interface ChatWelcomeProps {
@@ -15,8 +19,6 @@ interface ChatWelcomeProps {
 }
 
 export function ChatWelcome({ userName, onSuggestionClick }: ChatWelcomeProps) {
-  const displayName = userName ?? "there";
-
   return (
     <div
       style={{
@@ -32,8 +34,8 @@ export function ChatWelcome({ userName, onSuggestionClick }: ChatWelcomeProps) {
       {/* Agent avatar */}
       <div
         style={{
-          width: 48,
-          height: 48,
+          width: 56,
+          height: 56,
           borderRadius: "var(--radius-full)",
           background: "linear-gradient(135deg, #6366f1, #818cf8)",
           display: "flex",
@@ -41,7 +43,7 @@ export function ChatWelcome({ userName, onSuggestionClick }: ChatWelcomeProps) {
           justifyContent: "center",
         }}
       >
-        <Sparkles size={22} color="#fff" />
+        <Hexagon size={26} color="#fff" />
       </div>
 
       {/* Title */}
@@ -54,7 +56,7 @@ export function ChatWelcome({ userName, onSuggestionClick }: ChatWelcomeProps) {
             marginBottom: 6,
           }}
         >
-          Your personal AI agent
+          Your Agent is Ready
         </p>
         <p
           style={{
@@ -62,47 +64,47 @@ export function ChatWelcome({ userName, onSuggestionClick }: ChatWelcomeProps) {
             color: "var(--text-secondary)",
           }}
         >
-          Hello, {displayName}. What can I help you with?
+          Connected to OpenClaw Gateway
         </p>
       </div>
 
-      {/* Suggestion chips */}
+      {/* Capability chips */}
       <div
         style={{
           display: "flex",
           flexWrap: "wrap",
           gap: 8,
           justifyContent: "center",
-          maxWidth: 400,
+          maxWidth: 420,
         }}
       >
-        {SUGGESTIONS.map((text) => (
-          <button
-            key={text}
-            onClick={() => onSuggestionClick(text)}
-            className="hover-transition"
+        {CAPABILITIES.map((cap) => (
+          <span
+            key={cap}
             style={{
               backgroundColor: "var(--bg-surface)",
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-full)",
-              padding: "6px 14px",
-              fontSize: 13,
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-              e.currentTarget.style.color = "var(--text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-surface)";
-              e.currentTarget.style.color = "var(--text-secondary)";
+              padding: "5px 12px",
+              fontSize: 12,
+              color: "var(--text-muted)",
             }}
           >
-            {text}
-          </button>
+            {cap}
+          </span>
         ))}
       </div>
+
+      {/* Prompt */}
+      <p
+        style={{
+          fontSize: 13,
+          color: "var(--text-muted)",
+          marginTop: 8,
+        }}
+      >
+        Type a message to start a conversation
+      </p>
     </div>
   );
 }

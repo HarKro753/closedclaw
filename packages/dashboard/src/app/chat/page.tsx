@@ -4,11 +4,13 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useChat } from "@/hooks/useChat";
+import { useGatewayStatus } from "@/hooks/useGatewayStatus";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatWelcome } from "@/components/ChatWelcome";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ChatInput } from "@/components/ChatInput";
 import { StreamingDots } from "@/components/StreamingDots";
+import { GatewayOfflineBanner } from "@/components/GatewayOfflineBanner";
 
 export default function ChatPage() {
   const [input, setInput] = useState("");
@@ -23,6 +25,7 @@ export default function ChatPage() {
     sendMessage,
     clearHistory,
   } = useChat(token);
+  const { connected: gatewayConnected } = useGatewayStatus(token);
   const router = useRouter();
 
   useEffect(() => {
@@ -85,6 +88,7 @@ export default function ChatPage() {
         userName={user?.name}
         userEmail={user?.email}
         isAdmin={user?.isAdmin ?? false}
+        gatewayConnected={gatewayConnected}
         onNewChat={handleNewChat}
         onLogout={handleLogout}
       />
@@ -99,6 +103,9 @@ export default function ChatPage() {
           minWidth: 0,
         }}
       >
+        {/* Gateway offline banner */}
+        <GatewayOfflineBanner visible={gatewayConnected === false} />
+
         {/* Messages */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {historyLoading ? (

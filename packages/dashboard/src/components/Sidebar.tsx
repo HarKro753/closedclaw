@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { SquarePen, Search, LogOut, Shield } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { SquarePen, Search, LogOut, Shield, LayoutDashboard, MessageSquare } from "lucide-react";
 
 interface SidebarProps {
   userName: string | undefined;
   userEmail: string | undefined;
   isAdmin: boolean;
+  gatewayConnected: boolean | null;
   onNewChat: () => void;
   onLogout: () => void;
 }
 
-export function Sidebar({ userName, userEmail, isAdmin, onNewChat, onLogout }: SidebarProps) {
+export function Sidebar({ userName, userEmail, isAdmin, gatewayConnected, onNewChat, onLogout }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
 
   const initials = userName ? userName.charAt(0).toUpperCase() : "?";
 
@@ -40,7 +42,7 @@ export function Sidebar({ userName, userEmail, isAdmin, onNewChat, onLogout }: S
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 18, color: "var(--text-primary)" }}>&#x2B21;</span>
+          <span style={{ fontSize: 18, color: "var(--text-primary)" }}>&#x25C8;</span>
           <span
             style={{
               fontSize: 15,
@@ -50,6 +52,27 @@ export function Sidebar({ userName, userEmail, isAdmin, onNewChat, onLogout }: S
           >
             ClosedClaw
           </span>
+          <div
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              backgroundColor:
+                gatewayConnected === null
+                  ? "var(--text-muted)"
+                  : gatewayConnected
+                    ? "var(--success)"
+                    : "var(--error)",
+              flexShrink: 0,
+            }}
+            title={
+              gatewayConnected === null
+                ? "Checking gateway..."
+                : gatewayConnected
+                  ? "Gateway connected"
+                  : "Gateway offline"
+            }
+          />
         </div>
         <button
           onClick={onNewChat}
@@ -77,6 +100,40 @@ export function Sidebar({ userName, userEmail, isAdmin, onNewChat, onLogout }: S
         >
           <SquarePen size={18} />
         </button>
+      </div>
+
+      {/* Navigation */}
+      <div style={{ padding: "0 8px 8px" }}>
+        <NavItem
+          icon={<MessageSquare size={14} />}
+          label="Chat"
+          active={pathname === "/chat"}
+          onClick={() => router.push("/chat")}
+        />
+        {isAdmin && (
+          <NavItem
+            icon={<Shield size={14} />}
+            label="Admin"
+            active={pathname === "/admin"}
+            onClick={() => router.push("/admin")}
+          />
+        )}
+      </div>
+
+      {/* Workspace section */}
+      <div style={{ padding: "0 8px" }}>
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: "var(--text-muted)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            padding: "12px 8px 8px",
+          }}
+        >
+          Workspace
+        </p>
       </div>
 
       {/* Search */}
@@ -133,39 +190,6 @@ export function Sidebar({ userName, userEmail, isAdmin, onNewChat, onLogout }: S
           No chats yet
         </p>
       </div>
-
-      {/* Admin button */}
-      {isAdmin && (
-        <div style={{ padding: "0 8px 4px" }}>
-          <button
-            onClick={() => router.push("/admin")}
-            className="hover-transition"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              width: "100%",
-              padding: "8px",
-              background: "none",
-              border: "none",
-              borderRadius: "var(--radius-sm)",
-              color: "var(--text-secondary)",
-              fontSize: 13,
-              cursor: "pointer",
-              textAlign: "left",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-            }}
-          >
-            <Shield size={14} />
-            Admin Panel
-          </button>
-        </div>
-      )}
 
       {/* User profile */}
       <div
@@ -246,5 +270,52 @@ export function Sidebar({ userName, userEmail, isAdmin, onNewChat, onLogout }: S
         </button>
       </div>
     </aside>
+  );
+}
+
+function NavItem({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="hover-transition"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        width: "100%",
+        padding: "8px",
+        background: active ? "var(--bg-hover)" : "none",
+        border: "none",
+        borderRadius: "var(--radius-sm)",
+        color: active ? "var(--text-primary)" : "var(--text-secondary)",
+        fontSize: 13,
+        fontWeight: active ? 500 : 400,
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.backgroundColor = "transparent";
+        }
+      }}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { OverviewTab } from "@/components/admin/OverviewTab";
@@ -18,6 +18,13 @@ const TABS: Array<{ id: AdminTab; label: string }> = [
   { id: "skills", label: "Skills" },
   { id: "dispatch", label: "Dispatch" },
 ];
+
+const TAB_LABELS: Record<AdminTab, string> = {
+  overview: "Overview",
+  agents: "Agents",
+  skills: "Skills",
+  dispatch: "Dispatch",
+};
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
@@ -84,28 +91,33 @@ export default function AdminPage() {
       {/* Header */}
       <div
         style={{
-          padding: "16px 32px",
+          padding: "16px 32px 0",
           borderBottom: "1px solid var(--border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        {/* Breadcrumb */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 16,
+          }}
+        >
           <button
             onClick={() => router.push("/chat")}
             className="hover-transition"
             style={{
+              background: "none",
+              border: "none",
+              fontSize: 14,
+              fontWeight: 600,
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              padding: 0,
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "none",
-              border: "none",
-              fontSize: 13,
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-              padding: "4px 8px",
-              borderRadius: "var(--radius-sm)",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = "var(--text-primary)";
@@ -114,22 +126,33 @@ export default function AdminPage() {
               e.currentTarget.style.color = "var(--text-secondary)";
             }}
           >
-            <ArrowLeft size={14} />
-            Back
+            <span style={{ fontSize: 16 }}>&#x25C8;</span>
+            ClosedClaw
           </button>
-          <h1
+          <ChevronRight size={14} style={{ color: "var(--text-muted)" }} />
+          <span
             style={{
-              fontSize: 18,
-              fontWeight: 700,
+              fontSize: 14,
+              fontWeight: 500,
+              color: "var(--text-secondary)",
+            }}
+          >
+            Admin
+          </span>
+          <ChevronRight size={14} style={{ color: "var(--text-muted)" }} />
+          <span
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
               color: "var(--text-primary)",
             }}
           >
-            Admin Dashboard
-          </h1>
+            {TAB_LABELS[activeTab]}
+          </span>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 2 }}>
+        {/* Tab bar — underline style */}
+        <div style={{ display: "flex", gap: 24 }}>
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -142,16 +165,13 @@ export default function AdminPage() {
               }}
               className="hover-transition"
               style={{
-                padding: "6px 14px",
-                backgroundColor:
+                padding: "8px 0",
+                background: "none",
+                border: "none",
+                borderBottom:
                   activeTab === tab.id
-                    ? "var(--bg-surface)"
-                    : "transparent",
-                border:
-                  activeTab === tab.id
-                    ? "1px solid var(--border)"
-                    : "1px solid transparent",
-                borderRadius: "var(--radius-sm)",
+                    ? "2px solid var(--accent)"
+                    : "2px solid transparent",
                 fontSize: 13,
                 fontWeight: activeTab === tab.id ? 500 : 400,
                 color:
@@ -159,15 +179,16 @@ export default function AdminPage() {
                     ? "var(--text-primary)"
                     : "var(--text-secondary)",
                 cursor: "pointer",
+                marginBottom: -1,
               }}
               onMouseEnter={(e) => {
                 if (activeTab !== tab.id) {
-                  e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+                  e.currentTarget.style.color = "var(--text-primary)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (activeTab !== tab.id) {
-                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.color = "var(--text-secondary)";
                 }
               }}
             >
