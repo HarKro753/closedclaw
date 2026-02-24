@@ -8,3 +8,4 @@ data/
 *.tsbuildinfo
 .turbo/
 coverage/
+package-lock.json

@@ -1,8 +1,8 @@
 import type { Response, NextFunction } from "express";
-import type Database from "better-sqlite3";
+import type { Database } from "bun:sqlite";
 import type { AuthenticatedRequest } from "./auth.js";
 
-export function adminMiddleware(db: Database.Database) {
+export function adminMiddleware(db: Database) {
   return (
     req: AuthenticatedRequest,
     res: Response,

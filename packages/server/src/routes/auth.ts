@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
-import type Database from "better-sqlite3";
+import type { Database } from "bun:sqlite";
 import { provisionAgent } from "../agent-provisioner.js";
 import { authMiddleware } from "../middleware/auth.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
@@ -19,7 +19,7 @@ interface UserRow {
   created_at: string;
 }
 
-export function createAuthRouter(db: Database.Database): Router {
+export function createAuthRouter(db: Database): Router {
   const router = Router();
 
   router.post("/signup", async (req, res) => {

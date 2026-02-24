@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type Database from "better-sqlite3";
+import type { Database } from "bun:sqlite";
 import { runAgent } from "@closedclaw/agent";
 import type { Message } from "@closedclaw/agent";
 import { authMiddleware } from "../middleware/auth.js";
@@ -13,7 +13,7 @@ interface MessageRow {
   created_at: string;
 }
 
-export function createAgentRouter(db: Database.Database): Router {
+export function createAgentRouter(db: Database): Router {
   const router = Router();
 
   router.use(authMiddleware);

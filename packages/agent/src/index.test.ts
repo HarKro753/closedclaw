@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { executeTool } from "./tools.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import {

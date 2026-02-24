@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type Database from "better-sqlite3";
+import type { Database } from "bun:sqlite";
 import { authMiddleware } from "../middleware/auth.js";
 import { adminMiddleware } from "../middleware/admin.js";
 
@@ -14,7 +14,7 @@ interface UserWithStats {
   agent_status: string | null;
 }
 
-export function createAdminRouter(db: Database.Database): Router {
+export function createAdminRouter(db: Database): Router {
   const router = Router();
 
   router.use(authMiddleware);

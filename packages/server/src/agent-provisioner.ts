@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type Database from "better-sqlite3";
+import type { Database } from "bun:sqlite";
 import { v4 as uuid } from "uuid";
 import {
   DEFAULT_SOUL_MD,
@@ -19,7 +19,7 @@ interface ProvisionAgentOptions {
 }
 
 export function provisionAgent(
-  db: Database.Database,
+  db: Database,
   userId: string,
   options: ProvisionAgentOptions
 ): void {
@@ -63,7 +63,7 @@ export function provisionAgent(
 }
 
 export function getAgentPaths(
-  db: Database.Database,
+  db: Database,
   userId: string
 ): { workspaceDir: string; memoryFile: string } | null {
   const agent = db

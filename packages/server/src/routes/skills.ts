@@ -8,7 +8,7 @@ import {
   unlinkSync,
 } from "node:fs";
 import { join } from "node:path";
-import type Database from "better-sqlite3";
+import type { Database } from "bun:sqlite";
 import { authMiddleware } from "../middleware/auth.js";
 import { adminMiddleware } from "../middleware/admin.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
@@ -47,7 +47,7 @@ function sanitizeSkillName(name: string): string | null {
   return sanitized;
 }
 
-export function createSkillsRouter(db: Database.Database): Router {
+export function createSkillsRouter(db: Database): Router {
   const router = Router();
 
   router.use(authMiddleware);

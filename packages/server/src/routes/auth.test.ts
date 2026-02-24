@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import Database from "better-sqlite3";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { Database } from "bun:sqlite";
 import express from "express";
 import { runMigrations } from "../db/migrate.js";
 import { createAuthRouter } from "./auth.js";
@@ -9,7 +9,7 @@ import { join } from "node:path";
 const TEST_DATA_DIR = "data/test-auth";
 const TEST_DB_PATH = join(TEST_DATA_DIR, "test.sqlite");
 
-function createTestApp(db: Database.Database) {
+function createTestApp(db: Database) {
   const app = express();
   app.use(express.json());
   app.use("/auth", createAuthRouter(db));
@@ -37,7 +37,7 @@ async function request(
 }
 
 describe("Auth Routes", () => {
-  let db: Database.Database;
+  let db: Database;
   let app: express.Express;
 
   beforeEach(() => {
@@ -50,9 +50,9 @@ describe("Auth Routes", () => {
     process.env["ADMIN_EMAILS"] = "admin@test.com";
     process.env["DATA_DIR"] = TEST_DATA_DIR;
 
-    db = new Database(TEST_DB_PATH);
-    db.pragma("journal_mode = WAL");
-    db.pragma("foreign_keys = ON");
+    db = new Database(TEST_DB_PATH, { create: true });
+    db.exec("PRAGMA journal_mode = WAL");
+    db.exec("PRAGMA foreign_keys = ON");
     runMigrations(db);
 
     app = createTestApp(db);

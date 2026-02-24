@@ -10,15 +10,15 @@
     "packages/cli"
   ],
   "scripts": {
-    "dev:server": "npm run dev -w packages/server",
-    "dev:dashboard": "npm run dev -w packages/dashboard",
-    "build": "npm run build -w packages/agent && npm run build -w packages/server && npm run build -w packages/dashboard && npm run build -w packages/cli",
-    "build:agent": "npm run build -w packages/agent",
-    "build:server": "npm run build -w packages/server",
-    "build:dashboard": "npm run build -w packages/dashboard",
-    "test": "npm run test -w packages/server && npm run test -w packages/agent",
-    "test:server": "npm run test -w packages/server",
-    "test:agent": "npm run test -w packages/agent",
+    "dev:server": "bun run --filter @closedclaw/server dev",
+    "dev:dashboard": "bun run --filter @closedclaw/dashboard dev",
+    "build": "bun run --filter @closedclaw/agent build && bun run --filter @closedclaw/server build && bun run --filter @closedclaw/dashboard build && bun run --filter @closedclaw/cli build",
+    "build:agent": "bun run --filter @closedclaw/agent build",
+    "build:server": "bun run --filter @closedclaw/server build",
+    "build:dashboard": "bun run --filter @closedclaw/dashboard build",
+    "test": "bun run --filter @closedclaw/server test && bun run --filter @closedclaw/agent test",
+    "test:server": "bun run --filter @closedclaw/server test",
+    "test:agent": "bun run --filter @closedclaw/agent test",
     "lint": "echo 'lint pass'"
   },
   "license": "MIT"

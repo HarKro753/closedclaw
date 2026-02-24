@@ -8,15 +8,15 @@
   "scripts": {
     "build": "tsc && cp -r src/defaults dist/defaults",
     "dev": "tsc --watch",
-    "test": "vitest run"
+    "test": "bun test"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.52",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "@types/bun": "^1.0.0",
+    "typescript": "^5.7.0"
   },
   "license": "MIT"
 }

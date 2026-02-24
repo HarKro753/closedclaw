@@ -1,6 +1,6 @@
-import express from "express";
+import express, { type Express } from "express";
 import cors from "cors";
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import { mkdirSync, existsSync } from "node:fs";
 import { runMigrations } from "./db/migrate.js";
 import { createAuthRouter } from "./routes/auth.js";
@@ -16,13 +16,13 @@ if (!existsSync(DATA_DIR)) {
   mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const db = new Database(DB_PATH);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+const db = new Database(DB_PATH, { create: true });
+db.exec("PRAGMA journal_mode = WAL");
+db.exec("PRAGMA foreign_keys = ON");
 
 runMigrations(db);
 
-const app = express();
+const app: Express = express();
 
 app.use(cors());
 app.use(express.json());
@@ -41,4 +41,4 @@ app.listen(PORT, () => {
 });
 
 export { app };
-export type { Database };
+export { type Database };
