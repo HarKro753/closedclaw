@@ -4,7 +4,7 @@ const config: PlaywrightTestConfig = {
   testDir: "./e2e",
   timeout: 60000,
   use: {
-    baseURL: "http://localhost:3848",
+    baseURL: "http://localhost:3901",
     headless: true,
     screenshot: "only-on-failure",
   },
