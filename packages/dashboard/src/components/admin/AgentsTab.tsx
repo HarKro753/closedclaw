@@ -179,7 +179,7 @@ export function AgentsTab({
                       marginLeft: 4,
                     }}
                   >
-                    msgs
+                    {u.messageCount === 1 ? "msg" : "msgs"}
                   </span>
                 </td>
                 <td
