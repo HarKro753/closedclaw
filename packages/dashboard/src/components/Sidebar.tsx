@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { SquarePen, Search, LogOut, Shield, LayoutDashboard, MessageSquare } from "lucide-react";
+import { SquarePen, Search, LogOut, Shield, MessageSquare, Settings } from "lucide-react";
 
 interface SidebarProps {
   userName: string | undefined;
@@ -118,6 +118,12 @@ export function Sidebar({ userName, userEmail, isAdmin, gatewayConnected, onNewC
             onClick={() => router.push("/admin")}
           />
         )}
+        <NavItem
+          icon={<Settings size={14} />}
+          label="Settings"
+          active={pathname === "/settings"}
+          onClick={() => router.push("/settings")}
+        />
       </div>
 
       {/* Workspace section */}

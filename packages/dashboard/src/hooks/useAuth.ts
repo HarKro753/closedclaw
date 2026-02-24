@@ -9,6 +9,8 @@ interface User {
   name: string;
   isAdmin: boolean;
   createdAt?: string;
+  gatewayConfigured?: boolean;
+  gatewayStatus?: string;
 }
 
 interface AuthSignupResponse {
@@ -55,14 +57,26 @@ export function useAuth() {
   }, []);
 
   const signup = useCallback(
-    async (email: string, password: string, name: string) => {
+    async (
+      email: string,
+      password: string,
+      name: string,
+      gatewayUrl?: string,
+      gatewayToken?: string
+    ) => {
       setState((prev) => ({ ...prev, loading: true, error: null }));
+
+      const body: Record<string, unknown> = { email, password, name };
+      if (gatewayUrl) {
+        body["gateway_url"] = gatewayUrl;
+        body["gateway_token"] = gatewayToken;
+      }
 
       const { data, error } = await apiFetch<AuthSignupResponse>(
         "/auth/signup",
         {
           method: "POST",
-          body: { email, password, name },
+          body,
         }
       );
 
@@ -130,6 +144,15 @@ export function useAuth() {
     setState((prev) => ({ ...prev, error: null }));
   }, []);
 
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setState((prev) => {
+      if (!prev.user) return prev;
+      const updated = { ...prev.user, ...updates };
+      localStorage.setItem("closedclaw_user", JSON.stringify(updated));
+      return { ...prev, user: updated };
+    });
+  }, []);
+
   return {
     user: state.user,
     token: state.token,
@@ -139,5 +162,6 @@ export function useAuth() {
     login,
     logout,
     clearError,
+    updateUser,
   };
 }

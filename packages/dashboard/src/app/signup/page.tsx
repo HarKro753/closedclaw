@@ -3,21 +3,35 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [gatewayUrl, setGatewayUrl] = useState("");
+  const [gatewayToken, setGatewayToken] = useState("");
   const { signup, loading, error, clearError } = useAuth();
   const router = useRouter();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     clearError();
-    const success = await signup(email, password, name);
+    const success = await signup(
+      email,
+      password,
+      name,
+      gatewayUrl || undefined,
+      gatewayToken || undefined
+    );
     if (success) {
-      router.push("/chat");
+      if (gatewayUrl) {
+        router.push("/chat");
+      } else {
+        router.push("/setup");
+      }
     }
   }
 
@@ -207,6 +221,132 @@ export default function SignupPage() {
                 e.currentTarget.style.borderColor = "var(--border)";
               }}
             />
+          </div>
+
+          {/* Advanced section */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="hover-transition"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "none",
+                border: "none",
+                color: "var(--text-muted)",
+                fontSize: 13,
+                cursor: "pointer",
+                padding: "4px 0",
+                fontFamily: "inherit",
+                transition: "color 150ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--text-secondary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--text-muted)";
+              }}
+            >
+              {showAdvanced ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              Already have OpenClaw?
+            </button>
+
+            {showAdvanced && (
+              <div
+                className="animate-fade-in"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                  marginTop: 8,
+                  padding: 12,
+                  backgroundColor: "var(--bg-base)",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <div>
+                  <label
+                    htmlFor="adv-gateway-url"
+                    style={{
+                      display: "block",
+                      marginBottom: 4,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    Gateway URL
+                  </label>
+                  <input
+                    id="adv-gateway-url"
+                    type="text"
+                    value={gatewayUrl}
+                    onChange={(e) => setGatewayUrl(e.target.value)}
+                    placeholder="ws://localhost:18789"
+                    style={{
+                      width: "100%",
+                      backgroundColor: "var(--bg-input)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      color: "var(--text-primary)",
+                      padding: "8px 10px",
+                      fontSize: 13,
+                      outline: "none",
+                      transition: "border-color 150ms ease",
+                      fontFamily: "inherit",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "var(--accent)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="adv-gateway-token"
+                    style={{
+                      display: "block",
+                      marginBottom: 4,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    Auth Token
+                  </label>
+                  <input
+                    id="adv-gateway-token"
+                    type="password"
+                    value={gatewayToken}
+                    onChange={(e) => setGatewayToken(e.target.value)}
+                    placeholder="Optional"
+                    style={{
+                      width: "100%",
+                      backgroundColor: "var(--bg-input)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      color: "var(--text-primary)",
+                      padding: "8px 10px",
+                      fontSize: 13,
+                      outline: "none",
+                      transition: "border-color 150ms ease",
+                      fontFamily: "inherit",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "var(--accent)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <button
