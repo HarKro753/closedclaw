@@ -4,7 +4,8 @@ import jwt from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 import type { Database } from "bun:sqlite";
 import { provisionAgent } from "../agent-provisioner.js";
-import { getGatewayClient } from "../lib/openclaw-client.js";
+import { getClientForUser } from "../lib/gateway-pool.js";
+import { provisionGatewayAgent } from "../lib/provision.js";
 import { authMiddleware } from "../middleware/auth.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
 
@@ -20,15 +21,22 @@ interface UserRow {
   created_at: string;
 }
 
+interface AgentGatewayRow {
+  gateway_url: string | null;
+  status: string;
+}
+
 export function createAuthRouter(db: Database): Router {
   const router = Router();
 
   router.post("/signup", async (req, res) => {
     try {
-      const { email, password, name } = req.body as {
+      const { email, password, name, gateway_url, gateway_token } = req.body as {
         email?: string;
         password?: string;
         name?: string;
+        gateway_url?: string;
+        gateway_token?: string;
       };
 
       if (!email || !password || !name) {
@@ -69,23 +77,29 @@ export function createAuthRouter(db: Database): Router {
 
       const sessionKey = `closedclaw:user:${userId}`;
 
-      try {
-        const gateway = getGatewayClient();
-        const result = await gateway.createAgent({ name });
-        const openclawAgentId = result?.agentId ?? result?.id ?? null;
+      db.prepare("UPDATE agents SET gateway_url = ?, gateway_token = ?, openclaw_session_key = ? WHERE user_id = ?")
+        .run(gateway_url ?? null, gateway_token ?? null, sessionKey, userId);
 
-        if (openclawAgentId) {
-          db.prepare("UPDATE agents SET openclaw_agent_id = ?, openclaw_session_key = ? WHERE user_id = ?")
-            .run(openclawAgentId, sessionKey, userId);
+      if (gateway_url) {
+        provisionGatewayAgent(userId, gateway_url, gateway_token, name, db).catch(console.error);
+      } else {
+        try {
+          const fallbackUrl = process.env["OPENCLAW_GATEWAY_URL"] ?? "ws://127.0.0.1:18789";
+          const fallbackToken = process.env["OPENCLAW_AUTH_TOKEN"];
+          const client = getClientForUser(userId, { url: fallbackUrl, token: fallbackToken });
+          const result = await client.createAgent({ name });
+          const openclawAgentId = result?.agentId ?? result?.id ?? null;
 
-          await gateway.setAgentFile(openclawAgentId, "USER.md", `# ${name}\n\nEmail: ${email}\n`);
+          if (openclawAgentId) {
+            db.prepare("UPDATE agents SET openclaw_agent_id = ?, openclaw_session_key = ? WHERE user_id = ?")
+              .run(openclawAgentId, sessionKey, userId);
+
+            await client.setAgentFile(openclawAgentId, "USER.md", `# ${name}\n\nEmail: ${email}\n`);
+          }
+        } catch (err) {
+          console.error("Gateway agent creation failed (non-fatal):", err instanceof Error ? err.message : String(err));
         }
-      } catch (err) {
-        console.error("Gateway agent creation failed (non-fatal):", err instanceof Error ? err.message : String(err));
       }
-
-      db.prepare("UPDATE agents SET openclaw_session_key = ? WHERE user_id = ?")
-        .run(sessionKey, userId);
 
       const secret = process.env["JWT_SECRET"];
       if (!secret) {
@@ -103,7 +117,14 @@ export function createAuthRouter(db: Database): Router {
 
       res.status(201).json({
         token,
-        user: { id: userId, email: email.toLowerCase(), name, isAdmin: isAdmin === 1 },
+        user: {
+          id: userId,
+          email: email.toLowerCase(),
+          name,
+          isAdmin: isAdmin === 1,
+          gatewayConfigured: !!gateway_url,
+          gatewayStatus: "pending",
+        },
       });
     } catch (err) {
       console.error("Signup error:", err);
@@ -152,6 +173,10 @@ export function createAuthRouter(db: Database): Router {
         { expiresIn: TOKEN_EXPIRY }
       );
 
+      const agentRow = db
+        .prepare("SELECT gateway_url, status FROM agents WHERE user_id = ?")
+        .get(user.id) as AgentGatewayRow | undefined;
+
       res.json({
         token,
         user: {
@@ -159,6 +184,8 @@ export function createAuthRouter(db: Database): Router {
           email: user.email,
           name: user.name,
           isAdmin: user.is_admin === 1,
+          gatewayConfigured: !!agentRow?.gateway_url,
+          gatewayStatus: agentRow?.status ?? "pending",
         },
       });
     } catch (err) {
@@ -187,12 +214,18 @@ export function createAuthRouter(db: Database): Router {
         return;
       }
 
+      const agentRow = db
+        .prepare("SELECT gateway_url, status FROM agents WHERE user_id = ?")
+        .get(req.user.userId) as AgentGatewayRow | undefined;
+
       res.json({
         id: user.id,
         email: user.email,
         name: user.name,
         isAdmin: user.is_admin === 1,
         createdAt: user.created_at,
+        gatewayConfigured: !!agentRow?.gateway_url,
+        gatewayStatus: agentRow?.status ?? "pending",
       });
     }
   );
