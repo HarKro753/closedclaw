@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { createInterface } from "node:readline";
 import { runAgent } from "@closedclaw/agent";
 import type { Message } from "@closedclaw/agent";
