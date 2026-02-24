@@ -2,8 +2,9 @@ node_modules/
 dist/
 .next/
 .env
-data/db.sqlite
-data/agents/
+data/
+**/data/
+*.sqlite
 *.tsbuildinfo
 .turbo/
 coverage/
