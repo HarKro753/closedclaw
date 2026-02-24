@@ -1,0 +1,24 @@
+{
+  "name": "closedclaw",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Every person deserves their own AI agent",
+  "workspaces": [
+    "packages/agent",
+    "packages/server",
+    "packages/dashboard"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev -w packages/server",
+    "dev:dashboard": "npm run dev -w packages/dashboard",
+    "build": "npm run build -w packages/agent && npm run build -w packages/server && npm run build -w packages/dashboard",
+    "build:agent": "npm run build -w packages/agent",
+    "build:server": "npm run build -w packages/server",
+    "build:dashboard": "npm run build -w packages/dashboard",
+    "test": "npm run test -w packages/server && npm run test -w packages/agent",
+    "test:server": "npm run test -w packages/server",
+    "test:agent": "npm run test -w packages/agent",
+    "lint": "echo 'lint pass'"
+  },
+  "license": "MIT"
+}

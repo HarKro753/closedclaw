@@ -1,0 +1,30 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    ports:
+      - "3900:3900"
+    volumes:
+      - closedclaw-data:/app/data
+    env_file:
+      - .env
+    environment:
+      - DATA_DIR=/app/data
+      - PORT=3900
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: packages/dashboard/Dockerfile
+    ports:
+      - "3901:3901"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3900
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  closedclaw-data:
