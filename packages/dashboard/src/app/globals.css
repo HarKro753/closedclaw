@@ -62,7 +62,7 @@ body {
 }
 
 .animate-message-in {
-  animation: messageIn 0.3s ease-out;
+  animation: messageIn 0.3s ease-out forwards;
 }
 
 .loading-dot {
