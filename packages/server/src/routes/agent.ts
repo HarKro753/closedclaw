@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Database } from "bun:sqlite";
-import { runAgent } from "@closedclaw/agent";
-import type { Message } from "@closedclaw/agent";
+import { runAgent } from "../agent/index.js";
+import type { Message } from "../agent/index.js";
 import { authMiddleware } from "../middleware/auth.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { getAgentPaths } from "../agent-provisioner.js";

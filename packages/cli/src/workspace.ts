@@ -6,7 +6,7 @@ import {
   DEFAULT_AGENT_MD,
   DEFAULT_MEMORY_MD,
   buildDefaultUserMd,
-} from "@closedclaw/agent";
+} from "@closedclaw/server/agent";
 
 const WORKSPACE_ROOT = join(homedir(), ".closedclaw-cli");
 

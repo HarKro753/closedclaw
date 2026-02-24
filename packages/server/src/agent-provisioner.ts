@@ -7,7 +7,7 @@ import {
   DEFAULT_AGENT_MD,
   DEFAULT_MEMORY_MD,
   buildDefaultUserMd,
-} from "@closedclaw/agent";
+} from "./agent/index.js";
 
 function getDataDir(): string {
   return process.env["DATA_DIR"] ?? "data";

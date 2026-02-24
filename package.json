@@ -4,7 +4,6 @@
   "private": true,
   "description": "Every person deserves their own AI agent",
   "workspaces": [
-    "packages/agent",
     "packages/server",
     "packages/dashboard",
     "packages/cli"
@@ -12,13 +11,11 @@
   "scripts": {
     "dev:server": "bun run --filter @closedclaw/server dev",
     "dev:dashboard": "bun run --filter @closedclaw/dashboard dev",
-    "build": "bun run --filter @closedclaw/agent build && bun run --filter @closedclaw/server build && bun run --filter @closedclaw/dashboard build && bun run --filter @closedclaw/cli build",
-    "build:agent": "bun run --filter @closedclaw/agent build",
+    "build": "bun run --filter @closedclaw/server build && bun run --filter @closedclaw/dashboard build && bun run --filter @closedclaw/cli build",
     "build:server": "bun run --filter @closedclaw/server build",
     "build:dashboard": "bun run --filter @closedclaw/dashboard build",
-    "test": "bun run --filter @closedclaw/agent build && bun run --filter @closedclaw/server test && bun run --filter @closedclaw/agent test",
+    "test": "bun run --filter @closedclaw/server test",
     "test:server": "bun run --filter @closedclaw/server test",
-    "test:agent": "bun run --filter @closedclaw/agent test",
     "lint": "echo 'lint pass'"
   },
   "license": "MIT"
