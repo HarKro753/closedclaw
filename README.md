@@ -16,11 +16,7 @@ ClosedClaw is a self-hosted platform where every user in your organization gets 
 
 ## Screenshots
 
-| Login | Chat |
-|-------|------|
-| ![Login](packages/dashboard/public/ui-reference.png) | |
-
-> Screenshots coming soon — deploy locally to see the full UI.
+> Deploy locally to see the full UI — clean dark theme, indigo accents.
 
 ## Features
 
@@ -30,7 +26,8 @@ ClosedClaw is a self-hosted platform where every user in your organization gets 
 - **Skill system** — drop a `SKILL.md` into your agent's `skills/` directory; the agent auto-discovers and loads it on demand
 - **SSE streaming** — agent responses stream token-by-token to the dashboard via Server-Sent Events
 - **Clean dark UI** — minimal dashboard inspired by the best open-source chat UIs
-- **Admin panel** — user management and agent status overview
+- **Org admin dashboard** — 4-tab admin panel: overview stats, agents, centralized skill library, and task dispatch
+- **Task dispatch** — send tasks to any agent in your org; each agent processes it through their human's context (memory, skills, SOUL.md)
 - **CLI for local dev** — interactive REPL with slash commands (`/memory`, `/soul`, `/skills`, `/clear`)
 - **Self-hosted** — all data stays on your infrastructure
 
@@ -145,6 +142,10 @@ The agent runtime lives inside `packages/server/src/agent/` — it uses `@anthro
 |--------|----------|-------------|
 | `GET` | `/admin/users` | List all users with agent status |
 | `DELETE` | `/admin/users/:id` | Deactivate a user |
+| `POST` | `/admin/agents/:userId/message` | Dispatch task to any agent (runs through that user's context) |
+| `POST` | `/admin/agents/:userId/message/stream` | Same, streamed via SSE |
+| `GET` | `/admin/agents/:userId/skills` | List skills for a specific agent |
+| `GET` | `/admin/agents/:userId/memory` | Read an agent's memory summary |
 
 ## Environment Variables
 
