@@ -1,13 +1,18 @@
 import { Router } from "express";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { randomBytes } from "node:crypto";
 import type { Database } from "bun:sqlite";
 import { v4 as uuid } from "uuid";
+import bcrypt from "bcrypt";
 import { authMiddleware } from "../middleware/auth.js";
 import { adminMiddleware } from "../middleware/admin.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
-import { getAgentPaths } from "../agent-provisioner.js";
-import { getGatewayClient } from "../lib/openclaw-client.js";
+import { getAgentPaths, provisionAgent } from "../agent-provisioner.js";
+import { getClientForUser, evictClient } from "../lib/gateway-pool.js";
+import { provisionGatewayAgent } from "../lib/provision.js";
+
+const SALT_ROUNDS = 12;
 
 interface UserWithStats {
   id: string;
@@ -18,6 +23,7 @@ interface UserWithStats {
   active: number;
   message_count: number;
   agent_status: string | null;
+  gateway_url: string | null;
 }
 
 interface AdminTaskRow {
@@ -30,12 +36,31 @@ interface AdminTaskRow {
   created_at: string;
 }
 
+interface AgentRow {
+  gateway_url: string | null;
+  gateway_token: string | null;
+  status: string;
+  last_connected_at: string | null;
+  openclaw_session_key: string | null;
+}
+
 function getSessionKeyForUser(db: Database, userId: string): string {
   const row = db
     .prepare("SELECT openclaw_session_key FROM agents WHERE user_id = ?")
     .get(userId) as { openclaw_session_key?: string } | undefined;
 
   return row?.openclaw_session_key ?? `closedclaw:user:${userId}`;
+}
+
+function getUserGatewayClient(db: Database, userId: string) {
+  const agent = db
+    .prepare("SELECT gateway_url, gateway_token FROM agents WHERE user_id = ?")
+    .get(userId) as { gateway_url: string | null; gateway_token: string | null } | undefined;
+
+  const url = agent?.gateway_url ?? process.env["OPENCLAW_GATEWAY_URL"] ?? "ws://127.0.0.1:18789";
+  const token = agent?.gateway_token ?? process.env["OPENCLAW_AUTH_TOKEN"];
+
+  return getClientForUser(userId, { url, token });
 }
 
 export function createAdminRouter(db: Database): Router {
@@ -50,7 +75,8 @@ export function createAdminRouter(db: Database): Router {
         `SELECT 
           u.id, u.email, u.name, u.is_admin, u.created_at, u.active,
           COALESCE(m.message_count, 0) as message_count,
-          a.status as agent_status
+          a.status as agent_status,
+          a.gateway_url
         FROM users u
         LEFT JOIN (
           SELECT user_id, COUNT(*) as message_count 
@@ -72,7 +98,52 @@ export function createAdminRouter(db: Database): Router {
         active: u.active === 1,
         messageCount: u.message_count,
         agentStatus: u.agent_status ?? "none",
+        gatewayConfigured: !!u.gateway_url,
       })),
+    });
+  });
+
+  router.post("/users", async (req, res) => {
+    const { name, email, password, gateway_url, gateway_token, is_admin } = req.body as {
+      name: string;
+      email: string;
+      password?: string;
+      gateway_url?: string;
+      gateway_token?: string;
+      is_admin?: boolean;
+    };
+
+    if (!name || !email) {
+      res.status(400).json({ error: "name and email required" });
+      return;
+    }
+
+    const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email.toLowerCase());
+    if (existing) {
+      res.status(409).json({ error: "Email already registered" });
+      return;
+    }
+
+    const finalPassword = password ?? randomBytes(16).toString("hex");
+    const passwordHash = await bcrypt.hash(finalPassword, SALT_ROUNDS);
+    const userId = uuid();
+    const sessionKey = `closedclaw:user:${userId}`;
+
+    db.prepare("INSERT INTO users (id, email, password_hash, name, is_admin) VALUES (?, ?, ?, ?, ?)")
+      .run(userId, email.toLowerCase(), passwordHash, name, is_admin ? 1 : 0);
+
+    provisionAgent(db, userId, { userName: name, userEmail: email.toLowerCase() });
+
+    db.prepare("UPDATE agents SET gateway_url = ?, gateway_token = ?, openclaw_session_key = ? WHERE user_id = ?")
+      .run(gateway_url ?? null, gateway_token ?? null, sessionKey, userId);
+
+    if (gateway_url) {
+      provisionGatewayAgent(userId, gateway_url, gateway_token, name, db).catch(console.error);
+    }
+
+    res.status(201).json({
+      user: { id: userId, email: email.toLowerCase(), name },
+      temporaryPassword: password ? undefined : finalPassword,
     });
   });
 
@@ -88,10 +159,58 @@ export function createAdminRouter(db: Database): Router {
       return;
     }
 
+    evictClient(id);
     db.prepare("UPDATE users SET active = 0 WHERE id = ?").run(id);
     db.prepare("UPDATE agents SET status = 'deactivated' WHERE user_id = ?").run(id);
 
     res.json({ success: true });
+  });
+
+  router.patch("/users/:id/gateway", async (req, res) => {
+    const { id } = req.params;
+    const { gateway_url, gateway_token } = req.body as { gateway_url: string; gateway_token?: string };
+
+    if (!gateway_url) {
+      res.status(400).json({ error: "gateway_url required" });
+      return;
+    }
+
+    evictClient(id);
+
+    db.prepare("UPDATE agents SET gateway_url = ?, gateway_token = ?, status = 'pending' WHERE user_id = ?")
+      .run(gateway_url, gateway_token ?? null, id);
+
+    const user = db.prepare("SELECT name FROM users WHERE id = ?").get(id) as { name: string } | undefined;
+    if (user) {
+      provisionGatewayAgent(id, gateway_url, gateway_token, user.name, db).catch(console.error);
+    }
+
+    res.json({ success: true });
+  });
+
+  router.get("/users/:id/gateway-status", async (req, res) => {
+    const agent = db
+      .prepare("SELECT gateway_url, gateway_token, status, last_connected_at FROM agents WHERE user_id = ?")
+      .get(req.params["id"]) as AgentRow | undefined;
+
+    if (!agent?.gateway_url) {
+      res.json({ configured: false, status: "pending" });
+      return;
+    }
+
+    try {
+      const client = getClientForUser(req.params["id"] as string, {
+        url: agent.gateway_url,
+        token: agent.gateway_token ?? undefined,
+      });
+      await client.health();
+      db.prepare("UPDATE agents SET status = 'connected', last_connected_at = datetime('now') WHERE user_id = ?")
+        .run(req.params["id"]);
+      res.json({ configured: true, status: "connected", url: agent.gateway_url });
+    } catch {
+      db.prepare("UPDATE agents SET status = 'error' WHERE user_id = ?").run(req.params["id"]);
+      res.json({ configured: true, status: "error", url: agent.gateway_url });
+    }
   });
 
   router.get("/stats", (_req, res) => {
@@ -100,7 +219,7 @@ export function createAdminRouter(db: Database): Router {
       .get() as { count: number };
 
     const activeAgents = db
-      .prepare("SELECT COUNT(*) as count FROM agents WHERE status = 'active'")
+      .prepare("SELECT COUNT(*) as count FROM agents WHERE status IN ('active', 'connected')")
       .get() as { count: number };
 
     const totalMessages = db
@@ -222,7 +341,7 @@ export function createAdminRouter(db: Database): Router {
     ).run(taskId, adminId, userId, message.trim());
 
     try {
-      const gateway = getGatewayClient();
+      const gateway = getUserGatewayClient(db, userId);
       const sessionKey = getSessionKeyForUser(db, userId);
 
       const historyBefore = await gateway.getChatHistory(sessionKey, 100);
@@ -287,7 +406,7 @@ export function createAdminRouter(db: Database): Router {
     res.flushHeaders();
 
     try {
-      const gateway = getGatewayClient();
+      const gateway = getUserGatewayClient(db, userId);
       await gateway.connect();
 
       const sessionKey = getSessionKeyForUser(db, userId);
