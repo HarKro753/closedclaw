@@ -16,7 +16,7 @@
     "build:agent": "bun run --filter @closedclaw/agent build",
     "build:server": "bun run --filter @closedclaw/server build",
     "build:dashboard": "bun run --filter @closedclaw/dashboard build",
-    "test": "bun run --filter @closedclaw/server test && bun run --filter @closedclaw/agent test",
+    "test": "bun run --filter @closedclaw/agent build && bun run --filter @closedclaw/server test && bun run --filter @closedclaw/agent test",
     "test:server": "bun run --filter @closedclaw/server test",
     "test:agent": "bun run --filter @closedclaw/agent test",
     "lint": "echo 'lint pass'"
