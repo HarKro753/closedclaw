@@ -3,7 +3,7 @@ import Database from "better-sqlite3";
 import express from "express";
 import { runMigrations } from "../db/migrate.js";
 import { createAuthRouter } from "./auth.js";
-import { existsSync, rmSync, mkdirSync } from "node:fs";
+import { existsSync, rmSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const TEST_DATA_DIR = "data/test-auth";
@@ -91,6 +91,17 @@ describe("Auth Routes", () => {
 
       expect(existsSync(agent!.workspace_dir)).toBe(true);
       expect(existsSync(agent!.memory_file)).toBe(true);
+
+      const agentDir = join(TEST_DATA_DIR, "agents", user!.id);
+      expect(existsSync(join(agentDir, "SOUL.md"))).toBe(true);
+      expect(existsSync(join(agentDir, "USER.md"))).toBe(true);
+      expect(existsSync(join(agentDir, "MEMORY.md"))).toBe(true);
+      expect(existsSync(join(agentDir, "memory"))).toBe(true);
+      expect(existsSync(join(agentDir, "skills"))).toBe(true);
+
+      const userMd = readFileSync(join(agentDir, "USER.md"), "utf-8");
+      expect(userMd).toContain("Test User");
+      expect(userMd).toContain("user@test.com");
     });
 
     it("assigns admin role for admin emails", async () => {

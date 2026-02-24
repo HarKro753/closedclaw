@@ -37,15 +37,6 @@ export function createAgentRouter(db: Database.Database): Router {
         return;
       }
 
-      const user = db
-        .prepare("SELECT name FROM users WHERE id = ?")
-        .get(req.user.userId) as { name: string } | undefined;
-
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
       const historyRows = db
         .prepare(
           "SELECT role, content FROM messages WHERE user_id = ? ORDER BY created_at ASC"
@@ -63,7 +54,6 @@ export function createAgentRouter(db: Database.Database): Router {
 
       const response = await runAgent({
         userId: req.user.userId,
-        userName: user.name,
         message,
         history,
         workspaceDir: paths.workspaceDir,

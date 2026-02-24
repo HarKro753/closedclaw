@@ -10,7 +10,6 @@ export interface Message {
 
 export interface RunAgentOptions {
   userId: string;
-  userName: string;
   message: string;
   history: Message[];
   workspaceDir: string;
@@ -20,9 +19,9 @@ export interface RunAgentOptions {
 const MAX_TURNS = 15;
 
 export async function runAgent(opts: RunAgentOptions): Promise<string> {
-  const { userName, message, history, workspaceDir, memoryFile } = opts;
+  const { message, history, workspaceDir, memoryFile } = opts;
 
-  const systemPrompt = buildSystemPrompt(userName);
+  const systemPrompt = buildSystemPrompt(workspaceDir);
   const mcpServer = createToolServer(workspaceDir, memoryFile);
   const allowedTools = getAllowedToolNames();
 

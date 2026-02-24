@@ -6,12 +6,13 @@
   "workspaces": [
     "packages/agent",
     "packages/server",
-    "packages/dashboard"
+    "packages/dashboard",
+    "packages/cli"
   ],
   "scripts": {
     "dev:server": "npm run dev -w packages/server",
     "dev:dashboard": "npm run dev -w packages/dashboard",
-    "build": "npm run build -w packages/agent && npm run build -w packages/server && npm run build -w packages/dashboard",
+    "build": "npm run build -w packages/agent && npm run build -w packages/server && npm run build -w packages/dashboard && npm run build -w packages/cli",
     "build:agent": "npm run build -w packages/agent",
     "build:server": "npm run build -w packages/server",
     "build:dashboard": "npm run build -w packages/dashboard",

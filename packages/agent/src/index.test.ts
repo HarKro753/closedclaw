@@ -1,10 +1,17 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { executeTool } from "./tools.js";
 import { buildSystemPrompt } from "./system-prompt.js";
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 const TEST_DIR = "/tmp/closedclaw-agent-test";
+const AGENT_DIR = TEST_DIR;
 const WORKSPACE = join(TEST_DIR, "workspace");
 const MEMORY_FILE = join(TEST_DIR, "memory.md");
 
@@ -25,13 +32,23 @@ describe("Agent Tools", () => {
 
   describe("read_memory", () => {
     it("returns empty message when memory is empty", async () => {
-      const result = await executeTool("read_memory", {}, WORKSPACE, MEMORY_FILE);
+      const result = await executeTool(
+        "read_memory",
+        {},
+        WORKSPACE,
+        MEMORY_FILE
+      );
       expect(result).toBe("(memory is empty)");
     });
 
     it("returns memory content", async () => {
       writeFileSync(MEMORY_FILE, "User likes TypeScript", "utf-8");
-      const result = await executeTool("read_memory", {}, WORKSPACE, MEMORY_FILE);
+      const result = await executeTool(
+        "read_memory",
+        {},
+        WORKSPACE,
+        MEMORY_FILE
+      );
       expect(result).toBe("User likes TypeScript");
     });
   });
@@ -70,7 +87,9 @@ describe("Agent Tools", () => {
         MEMORY_FILE
       );
       expect(result).toContain("successfully");
-      expect(readFileSync(join(WORKSPACE, "test.txt"), "utf-8")).toBe("hello world");
+      expect(readFileSync(join(WORKSPACE, "test.txt"), "utf-8")).toBe(
+        "hello world"
+      );
     });
 
     it("creates subdirectories as needed", async () => {
@@ -80,7 +99,9 @@ describe("Agent Tools", () => {
         WORKSPACE,
         MEMORY_FILE
       );
-      expect(readFileSync(join(WORKSPACE, "sub/dir/file.txt"), "utf-8")).toBe("nested");
+      expect(readFileSync(join(WORKSPACE, "sub/dir/file.txt"), "utf-8")).toBe(
+        "nested"
+      );
     });
   });
 
@@ -175,14 +196,80 @@ describe("Agent Tools", () => {
 });
 
 describe("System Prompt", () => {
-  it("includes user name", () => {
-    const prompt = buildSystemPrompt("Alice");
+  beforeEach(() => {
+    if (existsSync(TEST_DIR)) {
+      rmSync(TEST_DIR, { recursive: true });
+    }
+    mkdirSync(WORKSPACE, { recursive: true });
+    mkdirSync(join(AGENT_DIR, "skills"), { recursive: true });
+    mkdirSync(join(AGENT_DIR, "memory"), { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(TEST_DIR)) {
+      rmSync(TEST_DIR, { recursive: true });
+    }
+  });
+
+  it("includes SOUL.md content when present", () => {
+    writeFileSync(
+      join(AGENT_DIR, "SOUL.md"),
+      "# SOUL\nBe helpful and kind.",
+      "utf-8"
+    );
+    const prompt = buildSystemPrompt(WORKSPACE);
+    expect(prompt).toContain("Your Identity and Values");
+    expect(prompt).toContain("Be helpful and kind");
+  });
+
+  it("includes USER.md content when present", () => {
+    writeFileSync(
+      join(AGENT_DIR, "USER.md"),
+      "# USER\n- **Name:** Alice",
+      "utf-8"
+    );
+    const prompt = buildSystemPrompt(WORKSPACE);
+    expect(prompt).toContain("Your Human");
     expect(prompt).toContain("Alice");
   });
 
+  it("includes MEMORY.md content when non-empty", () => {
+    writeFileSync(
+      join(AGENT_DIR, "MEMORY.md"),
+      "# MEMORY.md\nUser prefers dark mode.",
+      "utf-8"
+    );
+    const prompt = buildSystemPrompt(WORKSPACE);
+    expect(prompt).toContain("Your Long-Term Memory");
+    expect(prompt).toContain("dark mode");
+  });
+
+  it("skips MEMORY.md when it only has the header", () => {
+    writeFileSync(join(AGENT_DIR, "MEMORY.md"), "# MEMORY.md\n", "utf-8");
+    const prompt = buildSystemPrompt(WORKSPACE);
+    expect(prompt).not.toContain("Your Long-Term Memory");
+  });
+
+  it("includes skill files from agent skills directory", () => {
+    writeFileSync(
+      join(AGENT_DIR, "skills", "coding.md"),
+      "# Coding Skill\nAlways write tests first.",
+      "utf-8"
+    );
+    const prompt = buildSystemPrompt(WORKSPACE);
+    expect(prompt).toContain("Skills & Context");
+    expect(prompt).toContain("Always write tests first");
+  });
+
   it("mentions ClosedClaw", () => {
-    const prompt = buildSystemPrompt("Bob");
+    const prompt = buildSystemPrompt(WORKSPACE);
     expect(prompt).toContain("ClosedClaw");
+  });
+
+  it("includes available capabilities section", () => {
+    const prompt = buildSystemPrompt(WORKSPACE);
+    expect(prompt).toContain("Available Capabilities");
+    expect(prompt).toContain("persistent memory");
   });
 });
 

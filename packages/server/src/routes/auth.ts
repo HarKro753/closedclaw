@@ -64,7 +64,7 @@ export function createAuthRouter(db: Database.Database): Router {
         `INSERT INTO users (id, email, password_hash, name, is_admin) VALUES (?, ?, ?, ?, ?)`
       ).run(userId, email.toLowerCase(), passwordHash, name, isAdmin);
 
-      provisionAgent(db, userId);
+      provisionAgent(db, userId, { userName: name, userEmail: email.toLowerCase() });
 
       const secret = process.env["JWT_SECRET"];
       if (!secret) {
