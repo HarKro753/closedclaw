@@ -58,7 +58,7 @@ function formatPrompt(history: Message[], currentMessage: string): string {
 }
 
 async function collectResponse(
-  stream: AsyncIterable<SDKMessage>
+  stream: AsyncIterable<SDKMessage>,
 ): Promise<string> {
   const textParts: string[] = [];
 
@@ -91,3 +91,9 @@ async function collectResponse(
 
 export { executeTool, createToolServer, getAllowedToolNames } from "./tools.js";
 export { buildSystemPrompt } from "./system-prompt.js";
+export {
+  DEFAULT_SOUL_MD,
+  DEFAULT_AGENT_MD,
+  DEFAULT_MEMORY_MD,
+  buildDefaultUserMd,
+} from "./defaults.js";

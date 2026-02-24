@@ -39,7 +39,7 @@ export default function AdminPage() {
     setLoading(true);
     const { data, error: fetchError } = await apiFetch<UsersResponse>(
       "/admin/users",
-      { token }
+      { token },
     );
 
     if (fetchError || !data) {
@@ -87,11 +87,17 @@ export default function AdminPage() {
   if (!user?.isAdmin) return null;
 
   return (
-    <div className="min-h-screen p-8" style={{ backgroundColor: "var(--bg-primary)" }}>
+    <div
+      className="min-h-screen p-8"
+      style={{ backgroundColor: "var(--bg-primary)" }}
+    >
       <div className="mx-auto max-w-5xl">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+            <h1
+              className="text-2xl font-bold"
+              style={{ color: "var(--text-primary)" }}
+            >
               Admin Panel
             </h1>
             <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
@@ -101,7 +107,10 @@ export default function AdminPage() {
           <button
             onClick={() => router.push("/chat")}
             className="rounded-md border px-4 py-2 text-sm transition-colors"
-            style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+            style={{
+              borderColor: "var(--border)",
+              color: "var(--text-secondary)",
+            }}
           >
             Back to Chat
           </button>
@@ -110,7 +119,10 @@ export default function AdminPage() {
         {error && (
           <div
             className="mb-4 rounded-md px-3 py-2 text-sm"
-            style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "var(--error)" }}
+            style={{
+              backgroundColor: "rgba(239,68,68,0.1)",
+              color: "var(--error)",
+            }}
           >
             {error}
           </div>
@@ -164,7 +176,10 @@ export default function AdminPage() {
                 >
                   <td className="px-4 py-3">
                     <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                      <p
+                        className="text-sm font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {u.name}
                         {u.isAdmin && (
                           <span
@@ -178,15 +193,24 @@ export default function AdminPage() {
                           </span>
                         )}
                       </p>
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      <p
+                        className="text-xs"
+                        style={{ color: "var(--text-muted)" }}
+                      >
                         {u.email}
                       </p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                  <td
+                    className="px-4 py-3 text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {new Date(u.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                  <td
+                    className="px-4 py-3 text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
                     {u.messageCount}
                   </td>
                   <td className="px-4 py-3">

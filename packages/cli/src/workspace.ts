@@ -1,34 +1,14 @@
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import {
+  DEFAULT_SOUL_MD,
+  DEFAULT_AGENT_MD,
+  DEFAULT_MEMORY_MD,
+  buildDefaultUserMd,
+} from "@closedclaw/agent";
 
 const WORKSPACE_ROOT = join(homedir(), ".closedclaw-cli");
-
-const SOUL_MD_CONTENT = `# SOUL.md — Who You Are
-
-You are a personal AI agent. Be genuinely helpful, not performatively so.
-Have opinions. Be resourceful before asking. Earn trust through competence.
-Remember: you are a guest with access to someone's life. Treat it with respect.
-
-## Vibe
-Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just good.
-
-## Memory
-You wake up fresh each session. MEMORY.md, USER.md, and daily memory files are your continuity.
-Read them at the start of sessions. Update them when something important happens.
-`;
-
-const USER_MD_CONTENT = `# USER.md — About Your Human
-
-- **Name:** CLI Developer
-- **Email:** dev@closedclaw.local
-- **Joined:** ${new Date().toISOString().split("T")[0] ?? "unknown"}
-
-## Notes
-(You will fill this in as you learn about them.)
-`;
-
-const MEMORY_MD_CONTENT = "# MEMORY.md\n";
 
 export function getWorkspacePaths() {
   const agentDir = WORKSPACE_ROOT;
@@ -52,9 +32,10 @@ export function ensureWorkspace(): void {
   }
 
   const filesToSeed: Array<{ path: string; content: string }> = [
-    { path: join(agentDir, "SOUL.md"), content: SOUL_MD_CONTENT },
-    { path: join(agentDir, "USER.md"), content: USER_MD_CONTENT },
-    { path: join(agentDir, "MEMORY.md"), content: MEMORY_MD_CONTENT },
+    { path: join(agentDir, "SOUL.md"), content: DEFAULT_SOUL_MD },
+    { path: join(agentDir, "USER.md"), content: buildDefaultUserMd("CLI Developer", "dev@closedclaw.local") },
+    { path: join(agentDir, "AGENT.md"), content: DEFAULT_AGENT_MD },
+    { path: join(agentDir, "MEMORY.md"), content: DEFAULT_MEMORY_MD },
   ];
 
   for (const file of filesToSeed) {

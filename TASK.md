@@ -36,27 +36,33 @@ closedclaw/
 Express or Hono TypeScript server. Handles:
 
 ### Auth
+
 - `POST /auth/signup` — creates user + provisions agent environment
 - `POST /auth/login` — returns JWT
 - `GET /auth/me` — current user
 
 ### Users (admin only)
+
 - `GET /admin/users` — list all users with agent status
 - `DELETE /admin/users/:id` — deactivate user
 
 ### Agent
+
 - `POST /agent/message` — send a message to the user's agent, returns response
 - `GET /agent/history` — conversation history for this user
 - `DELETE /agent/history` — clear conversation history
 
 ### Auth model
+
 - JWT tokens (short-lived, 7 days)
 - Admin role: set via env var `ADMIN_EMAILS=email1@x.com,email2@x.com`
 - Passwords hashed with bcrypt
 - Storage: SQLite (`data/db.sqlite`) using `better-sqlite3` — no ORM, just raw SQL
 
 ### Agent provisioning
+
 When a user signs up:
+
 1. Create a directory: `data/agents/<userId>/`
 2. Inside it: `memory.md` (empty), `workspace/` directory
 3. Store the user's agent config in SQLite
@@ -68,16 +74,18 @@ The agent runtime. **Inspired by TravelAgent2 — use the Anthropic Claude SDK d
 ```typescript
 // Core interface
 export async function runAgent(opts: {
-  userId: string
-  message: string
-  history: Message[]
-  workspaceDir: string
-  memoryFile: string
-}): Promise<string>
+  userId: string;
+  message: string;
+  history: Message[];
+  workspaceDir: string;
+  memoryFile: string;
+}): Promise<string>;
 ```
 
 ### Agent capabilities (tools)
+
 Give the agent these tools:
+
 - `read_memory` — reads the user's `memory.md`
 - `write_memory` — appends to or rewrites `memory.md`
 - `read_file` — reads a file from the user's workspace
@@ -86,12 +94,14 @@ Give the agent these tools:
 - `web_search` — basic web search (use Brave API if `BRAVE_API_KEY` is set, otherwise skip)
 
 ### Model
+
 Use `claude-opus-4-5` or `claude-sonnet-4-5` — configurable via `CLAUDE_MODEL` env var.
 
 ### System prompt
+
 ```
-You are a personal AI agent for {{userName}}. You have your own persistent memory 
-and a personal workspace. Use your memory to remember important things across 
+You are a personal AI agent for {{userName}}. You have your own persistent memory
+and a personal workspace. Use your memory to remember important things across
 conversations. You're part of ClosedClaw — an organizational agent OS.
 ```
 
@@ -104,10 +114,12 @@ Next.js 15 + TypeScript + Tailwind. Three pages:
 ### `/` → redirect to `/login` if not authenticated, else `/chat`
 
 ### `/login` and `/signup`
+
 - Clean, minimal auth forms
 - JWT stored in localStorage or httpOnly cookie
 
 ### `/chat`
+
 - Chat interface with the user's agent
 - Message history loaded on mount
 - Real-time feel: optimistic updates, loading state while agent responds
@@ -115,12 +127,14 @@ Next.js 15 + TypeScript + Tailwind. Three pages:
 - Mobile responsive
 
 ### `/admin` (admin only)
+
 - Table of all users: email, joined date, message count, agent status
 - Only accessible if user has admin role, otherwise 404
 
 ## Self-hosting
 
 ### docker-compose.yml
+
 ```
 services:
   server: builds packages/server, port 3900
@@ -130,6 +144,7 @@ services:
 Volumes: `data/` directory mounted into server for SQLite + agent workspaces.
 
 ### Environment variables
+
 ```
 JWT_SECRET=           required (random string)
 ADMIN_EMAILS=         comma-separated admin emails
@@ -192,6 +207,7 @@ CHANGELOG.md
 ## README
 
 Write a professional README in the style of a polished open source project. Include:
+
 - Centered hero: project name + tagline ("Every person deserves their own AI agent")
 - Badges: npm version, Docker, license
 - What it is (2-3 sentences: personal agents for every org member, web dashboard, self-hosted)
@@ -203,12 +219,14 @@ Write a professional README in the style of a polished open source project. Incl
 - License: MIT
 
 ## Quality bar
+
 - TypeScript strict mode, zero `any`
 - Build passes for all packages
 - Basic tests: auth flow (signup creates user + agent dir), agent runAgent() with mocked Anthropic
 - `npm run dev:server` and `npm run dev:dashboard` work
 
 ## Git & delivery
+
 - Work on `main`, trunk-based
 - `git push origin main` after every meaningful commit
 - On completion: `openclaw message send --target 8186358692 --channel telegram --message "✅ Done: closedclaw v1 pushed to main — ready for review"`

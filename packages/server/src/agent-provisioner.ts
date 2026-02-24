@@ -2,39 +2,16 @@ import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type Database from "better-sqlite3";
 import { v4 as uuid } from "uuid";
+import {
+  DEFAULT_SOUL_MD,
+  DEFAULT_AGENT_MD,
+  DEFAULT_MEMORY_MD,
+  buildDefaultUserMd,
+} from "@closedclaw/agent";
 
 function getDataDir(): string {
   return process.env["DATA_DIR"] ?? "data";
 }
-
-const SOUL_MD_CONTENT = `# SOUL.md — Who You Are
-
-You are a personal AI agent. Be genuinely helpful, not performatively so.
-Have opinions. Be resourceful before asking. Earn trust through competence.
-Remember: you are a guest with access to someone's life. Treat it with respect.
-
-## Vibe
-Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just good.
-
-## Memory
-You wake up fresh each session. MEMORY.md, USER.md, and daily memory files are your continuity.
-Read them at the start of sessions. Update them when something important happens.
-`;
-
-function buildUserMdContent(userName: string, userEmail: string): string {
-  const date = new Date().toISOString().split("T")[0] ?? "unknown";
-  return `# USER.md — About Your Human
-
-- **Name:** ${userName}
-- **Email:** ${userEmail}
-- **Joined:** ${date}
-
-## Notes
-(You will fill this in as you learn about them.)
-`;
-}
-
-const MEMORY_MD_CONTENT = "# MEMORY.md\n";
 
 interface ProvisionAgentOptions {
   userName: string;
@@ -67,13 +44,14 @@ export function provisionAgent(
     mkdirSync(dailyMemoryDir, { recursive: true });
   }
 
-  writeFileSync(join(agentDir, "SOUL.md"), SOUL_MD_CONTENT, "utf-8");
+  writeFileSync(join(agentDir, "SOUL.md"), DEFAULT_SOUL_MD, "utf-8");
   writeFileSync(
     join(agentDir, "USER.md"),
-    buildUserMdContent(options.userName, options.userEmail),
+    buildDefaultUserMd(options.userName, options.userEmail),
     "utf-8"
   );
-  writeFileSync(join(agentDir, "MEMORY.md"), MEMORY_MD_CONTENT, "utf-8");
+  writeFileSync(join(agentDir, "AGENT.md"), DEFAULT_AGENT_MD, "utf-8");
+  writeFileSync(join(agentDir, "MEMORY.md"), DEFAULT_MEMORY_MD, "utf-8");
 
   if (!existsSync(memoryFile)) {
     writeFileSync(memoryFile, "", "utf-8");

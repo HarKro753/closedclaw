@@ -36,7 +36,7 @@ describe("Agent Tools", () => {
         "read_memory",
         {},
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toBe("(memory is empty)");
     });
@@ -47,7 +47,7 @@ describe("Agent Tools", () => {
         "read_memory",
         {},
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toBe("User likes TypeScript");
     });
@@ -59,7 +59,7 @@ describe("Agent Tools", () => {
         "write_memory",
         { content: "First", mode: "overwrite" },
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(readFileSync(MEMORY_FILE, "utf-8")).toBe("First");
     });
@@ -70,7 +70,7 @@ describe("Agent Tools", () => {
         "write_memory",
         { content: "Second", mode: "append" },
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       const content = readFileSync(MEMORY_FILE, "utf-8");
       expect(content).toContain("First");
@@ -84,11 +84,11 @@ describe("Agent Tools", () => {
         "write_file",
         { path: "test.txt", content: "hello world" },
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toContain("successfully");
       expect(readFileSync(join(WORKSPACE, "test.txt"), "utf-8")).toBe(
-        "hello world"
+        "hello world",
       );
     });
 
@@ -97,10 +97,10 @@ describe("Agent Tools", () => {
         "write_file",
         { path: "sub/dir/file.txt", content: "nested" },
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(readFileSync(join(WORKSPACE, "sub/dir/file.txt"), "utf-8")).toBe(
-        "nested"
+        "nested",
       );
     });
   });
@@ -112,7 +112,7 @@ describe("Agent Tools", () => {
         "read_file",
         { path: "read-me.txt" },
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toBe("contents here");
     });
@@ -122,7 +122,7 @@ describe("Agent Tools", () => {
         "read_file",
         { path: "missing.txt" },
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toContain("not found");
     });
@@ -138,7 +138,7 @@ describe("Agent Tools", () => {
         "list_files",
         {},
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
 
       expect(result).toContain("a.txt");
@@ -151,7 +151,7 @@ describe("Agent Tools", () => {
         "list_files",
         {},
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toBe("(empty directory)");
     });
@@ -163,7 +163,7 @@ describe("Agent Tools", () => {
         "read_file",
         { path: "../../etc/passwd" },
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toContain("traversal");
     });
@@ -176,7 +176,7 @@ describe("Agent Tools", () => {
         "web_search",
         { query: "test" },
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toContain("not available");
     });
@@ -188,7 +188,7 @@ describe("Agent Tools", () => {
         "nonexistent_tool",
         {},
         WORKSPACE,
-        MEMORY_FILE
+        MEMORY_FILE,
       );
       expect(result).toContain("unknown tool");
     });
@@ -201,7 +201,6 @@ describe("System Prompt", () => {
       rmSync(TEST_DIR, { recursive: true });
     }
     mkdirSync(WORKSPACE, { recursive: true });
-    mkdirSync(join(AGENT_DIR, "skills"), { recursive: true });
     mkdirSync(join(AGENT_DIR, "memory"), { recursive: true });
   });
 
@@ -215,7 +214,7 @@ describe("System Prompt", () => {
     writeFileSync(
       join(AGENT_DIR, "SOUL.md"),
       "# SOUL\nBe helpful and kind.",
-      "utf-8"
+      "utf-8",
     );
     const prompt = buildSystemPrompt(WORKSPACE);
     expect(prompt).toContain("Your Identity and Values");
@@ -226,7 +225,7 @@ describe("System Prompt", () => {
     writeFileSync(
       join(AGENT_DIR, "USER.md"),
       "# USER\n- **Name:** Alice",
-      "utf-8"
+      "utf-8",
     );
     const prompt = buildSystemPrompt(WORKSPACE);
     expect(prompt).toContain("Your Human");
@@ -237,7 +236,7 @@ describe("System Prompt", () => {
     writeFileSync(
       join(AGENT_DIR, "MEMORY.md"),
       "# MEMORY.md\nUser prefers dark mode.",
-      "utf-8"
+      "utf-8",
     );
     const prompt = buildSystemPrompt(WORKSPACE);
     expect(prompt).toContain("Your Long-Term Memory");
@@ -250,15 +249,15 @@ describe("System Prompt", () => {
     expect(prompt).not.toContain("Your Long-Term Memory");
   });
 
-  it("includes skill files from agent skills directory", () => {
+  it("includes AGENT.md content when present", () => {
     writeFileSync(
-      join(AGENT_DIR, "skills", "coding.md"),
-      "# Coding Skill\nAlways write tests first.",
-      "utf-8"
+      join(AGENT_DIR, "AGENT.md"),
+      "# AGENT\nAlways ask before deleting.",
+      "utf-8",
     );
     const prompt = buildSystemPrompt(WORKSPACE);
-    expect(prompt).toContain("Skills & Context");
-    expect(prompt).toContain("Always write tests first");
+    expect(prompt).toContain("Behavioral Rules");
+    expect(prompt).toContain("Always ask before deleting");
   });
 
   it("mentions ClosedClaw", () => {
@@ -266,10 +265,9 @@ describe("System Prompt", () => {
     expect(prompt).toContain("ClosedClaw");
   });
 
-  it("includes available capabilities section", () => {
+  it("includes closing guidance", () => {
     const prompt = buildSystemPrompt(WORKSPACE);
-    expect(prompt).toContain("Available Capabilities");
-    expect(prompt).toContain("persistent memory");
+    expect(prompt).toContain("helpful, concise, and proactive");
   });
 });
 
