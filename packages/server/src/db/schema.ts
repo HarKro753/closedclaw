@@ -32,3 +32,17 @@ export const CREATE_MESSAGES_TABLE = `
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `;
+
+export const CREATE_ADMIN_TASKS_TABLE = `
+  CREATE TABLE IF NOT EXISTS admin_tasks (
+    id TEXT PRIMARY KEY,
+    admin_id TEXT NOT NULL,
+    target_user_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    response TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (admin_id) REFERENCES users(id),
+    FOREIGN KEY (target_user_id) REFERENCES users(id)
+  )
+`;
