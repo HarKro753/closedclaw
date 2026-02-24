@@ -52,6 +52,7 @@ interface ToolInput {
   url?: string;
   maxChars?: number;
   maxResults?: number;
+  name?: string;
 }
 
 export async function executeTool(
@@ -331,6 +332,42 @@ async function executeToolInner(
       return results.join("\n");
     }
 
+    case "list_skills": {
+      const skillsDir = join(workspaceDir, "skills");
+      if (!existsSync(skillsDir)) {
+        return "No skills directory found";
+      }
+      const entries = readdirSync(skillsDir);
+      const skills: string[] = [];
+      for (const entry of entries) {
+        const skillMdPath = join(skillsDir, entry, "SKILL.md");
+        if (existsSync(skillMdPath)) {
+          const content = readFileSync(skillMdPath, "utf-8");
+          const firstLine = content.split("\n").find((line) => line.trim().length > 0) ?? "(no description)";
+          skills.push(`${entry}: ${firstLine}`);
+        }
+      }
+      if (skills.length === 0) {
+        return "No skills found";
+      }
+      return skills.join("\n");
+    }
+
+    case "read_skill": {
+      const { name } = input;
+      if (!name) {
+        return "Error: name is required";
+      }
+      if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+        return "Error: invalid skill name — path traversal not allowed";
+      }
+      const skillPath = join(workspaceDir, "skills", name, "SKILL.md");
+      if (!existsSync(skillPath)) {
+        return `Error: skill not found: ${name}`;
+      }
+      return readFileSync(skillPath, "utf-8");
+    }
+
     default:
       return `Error: unknown tool: ${toolName}`;
   }
@@ -567,6 +604,26 @@ function buildSdkTools(workspaceDir: string, memoryFile: string) {
         return { content: [{ type: "text" as const, text: result }] };
       },
     ),
+    tool(
+      "list_skills",
+      "List available skills in your workspace. Returns skill names with descriptions from their SKILL.md files.",
+      {},
+      async () => {
+        const result = await executeTool("list_skills", {}, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      },
+    ),
+    tool(
+      "read_skill",
+      "Read the full SKILL.md content for a named skill.",
+      {
+        name: z.string().describe("The skill name (directory name under skills/)"),
+      },
+      async (args: { name: string }) => {
+        const result = await executeTool("read_skill", args, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      },
+    ),
   ];
 }
 
@@ -594,6 +651,8 @@ export function getAllowedToolNames(): string[] {
     "memory_daily_write",
     "memory_daily_read",
     "memory_search",
+    "list_skills",
+    "read_skill",
   ];
   return toolNames.map((name) => `mcp__${SERVER_NAME}__${name}`);
 }

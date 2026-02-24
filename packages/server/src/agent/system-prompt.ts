@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 function readFileIfExists(filePath: string): string | null {
@@ -81,6 +81,26 @@ export function buildSystemPrompt(workspaceDir: string): string {
     sections.push("## Today's Notes");
     sections.push(todayContent);
     sections.push("");
+  }
+
+  const skillsDir = join(workspaceDir, "skills");
+  if (existsSync(skillsDir)) {
+    const skillNames: string[] = [];
+    const entries = readdirSync(skillsDir);
+    for (const entry of entries) {
+      const skillMdPath = join(skillsDir, entry, "SKILL.md");
+      if (existsSync(skillMdPath)) {
+        skillNames.push(entry);
+      }
+    }
+    if (skillNames.length > 0) {
+      sections.push("## Available Skills");
+      sections.push(
+        `You have ${skillNames.length} skills available. Use list_skills to see descriptions, read_skill to load one.`,
+      );
+      sections.push(`Skills: ${skillNames.join(", ")}`);
+      sections.push("");
+    }
   }
 
   sections.push(
