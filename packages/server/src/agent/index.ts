@@ -89,6 +89,48 @@ async function collectResponse(
   return textParts[textParts.length - 1] ?? "";
 }
 
+export async function* runAgentStream(opts: RunAgentOptions): AsyncGenerator<string> {
+  const { message, history, workspaceDir, memoryFile } = opts;
+
+  const systemPrompt = buildSystemPrompt(workspaceDir);
+  const mcpServer = createToolServer(workspaceDir, memoryFile);
+  const allowedTools = getAllowedToolNames();
+
+  const prompt = formatPrompt(history, message);
+
+  const stream = query({
+    prompt,
+    options: {
+      systemPrompt,
+      model: "sonnet",
+      maxTurns: MAX_TURNS,
+      mcpServers: { closedclaw: mcpServer },
+      allowedTools,
+      tools: [],
+      persistSession: false,
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
+    },
+  });
+
+  for await (const message of stream) {
+    if (message.type === "assistant") {
+      for (const block of message.message.content) {
+        if (block.type === "text" && block.text.length > 0) {
+          yield block.text;
+        }
+      }
+    }
+    if (message.type === "result" && message.subtype !== "success") {
+      throw new Error(
+        "error" in message && typeof message.error === "string"
+          ? message.error
+          : "Agent execution failed",
+      );
+    }
+  }
+}
+
 export { executeTool, createToolServer, getAllowedToolNames } from "./tools.js";
 export { buildSystemPrompt } from "./system-prompt.js";
 export {
