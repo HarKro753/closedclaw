@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/utils/api";
 
@@ -76,7 +77,16 @@ export default function AdminPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div
+        style={{
+          display: "flex",
+          height: "100vh",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
+          backgroundColor: "var(--bg-base)",
+        }}
+      >
         <div className="loading-dot" />
         <div className="loading-dot" />
         <div className="loading-dot" />
@@ -88,40 +98,78 @@ export default function AdminPage() {
 
   return (
     <div
-      className="min-h-screen p-8"
-      style={{ backgroundColor: "var(--bg-primary)" }}
+      style={{
+        minHeight: "100vh",
+        padding: 32,
+        backgroundColor: "var(--bg-base)",
+      }}
     >
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-8 flex items-center justify-between">
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
+        <div
+          style={{
+            marginBottom: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <div>
             <h1
-              className="text-2xl font-bold"
-              style={{ color: "var(--text-primary)" }}
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: "var(--text-primary)",
+              }}
             >
               Admin Panel
             </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+            <p
+              style={{
+                marginTop: 4,
+                fontSize: 13,
+                color: "var(--text-muted)",
+              }}
+            >
               Manage users and their agents
             </p>
           </div>
           <button
             onClick={() => router.push("/chat")}
-            className="rounded-md border px-4 py-2 text-sm transition-colors"
+            className="hover-transition"
             style={{
-              borderColor: "var(--border)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              backgroundColor: "var(--bg-surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              padding: "8px 14px",
+              fontSize: 13,
               color: "var(--text-secondary)",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--bg-surface)";
             }}
           >
+            <ArrowLeft size={14} />
             Back to Chat
           </button>
         </div>
 
         {error && (
           <div
-            className="mb-4 rounded-md px-3 py-2 text-sm"
+            className="animate-fade-in"
             style={{
+              marginBottom: 16,
               backgroundColor: "rgba(239,68,68,0.1)",
               color: "var(--error)",
+              borderRadius: "var(--radius-sm)",
+              padding: "8px 12px",
+              fontSize: 13,
             }}
           >
             {error}
@@ -129,64 +177,58 @@ export default function AdminPage() {
         )}
 
         <div
-          className="overflow-hidden rounded-lg border"
-          style={{ borderColor: "var(--border)" }}
+          style={{
+            overflow: "hidden",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--border)",
+          }}
         >
-          <table className="w-full">
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ backgroundColor: "var(--bg-secondary)" }}>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  User
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Joined
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Messages
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Agent
-                </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Actions
-                </th>
+              <tr style={{ backgroundColor: "var(--bg-surface)" }}>
+                {["User", "Joined", "Messages", "Agent", "Actions"].map((header) => (
+                  <th
+                    key={header}
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: 11,
+                      fontWeight: 500,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
                 <tr
                   key={u.id}
-                  className="border-t"
-                  style={{ borderColor: "var(--border)" }}
+                  style={{ borderTop: "1px solid var(--border)" }}
                 >
-                  <td className="px-4 py-3">
+                  <td style={{ padding: "12px 16px" }}>
                     <div>
                       <p
-                        className="text-sm font-medium"
-                        style={{ color: "var(--text-primary)" }}
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: "var(--text-primary)",
+                        }}
                       >
                         {u.name}
                         {u.isAdmin && (
                           <span
-                            className="ml-2 rounded-full px-2 py-0.5 text-xs"
                             style={{
-                              backgroundColor: "rgba(109,40,217,0.2)",
+                              marginLeft: 8,
+                              backgroundColor: "rgba(99,102,241,0.15)",
                               color: "var(--accent)",
+                              borderRadius: "var(--radius-full)",
+                              padding: "2px 8px",
+                              fontSize: 11,
                             }}
                           >
                             Admin
@@ -194,29 +236,42 @@ export default function AdminPage() {
                         )}
                       </p>
                       <p
-                        className="text-xs"
-                        style={{ color: "var(--text-muted)" }}
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text-muted)",
+                          marginTop: 2,
+                        }}
                       >
                         {u.email}
                       </p>
                     </div>
                   </td>
                   <td
-                    className="px-4 py-3 text-sm"
-                    style={{ color: "var(--text-secondary)" }}
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: 13,
+                      color: "var(--text-secondary)",
+                    }}
                   >
                     {new Date(u.createdAt).toLocaleDateString()}
                   </td>
                   <td
-                    className="px-4 py-3 text-sm"
-                    style={{ color: "var(--text-secondary)" }}
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: 13,
+                      color: "var(--text-secondary)",
+                    }}
                   >
                     {u.messageCount}
                   </td>
-                  <td className="px-4 py-3">
+                  <td style={{ padding: "12px 16px" }}>
                     <span
-                      className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
                       style={{
+                        display: "inline-block",
+                        borderRadius: "var(--radius-full)",
+                        padding: "2px 8px",
+                        fontSize: 12,
+                        fontWeight: 500,
                         backgroundColor:
                           u.agentStatus === "active"
                             ? "rgba(34,197,94,0.15)"
@@ -230,12 +285,24 @@ export default function AdminPage() {
                       {u.agentStatus}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td style={{ padding: "12px 16px" }}>
                     {u.active && !u.isAdmin && (
                       <button
                         onClick={() => handleDeactivate(u.id)}
-                        className="text-xs transition-colors hover:underline"
-                        style={{ color: "var(--error)" }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          fontSize: 12,
+                          color: "var(--error)",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.textDecoration = "underline";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.textDecoration = "none";
+                        }}
                       >
                         Deactivate
                       </button>

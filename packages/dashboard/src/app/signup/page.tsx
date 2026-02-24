@@ -22,22 +22,64 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        backgroundColor: "var(--bg-base)",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 400,
+          backgroundColor: "var(--bg-surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-md)",
+          padding: 32,
+        }}
+      >
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 20 }}>&#x2B21;</span>
             ClosedClaw
           </h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Create your account and get your own AI agent
+          <p
+            style={{
+              marginTop: 8,
+              fontSize: 14,
+              color: "var(--text-secondary)",
+            }}
+          >
+            Create your account
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {error && (
             <div
-              className="animate-fade-in rounded-md px-3 py-2 text-sm"
-              style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "var(--error)" }}
+              className="animate-fade-in"
+              style={{
+                backgroundColor: "rgba(239,68,68,0.1)",
+                color: "var(--error)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 12px",
+                fontSize: 13,
+              }}
             >
               {error}
             </div>
@@ -46,8 +88,13 @@ export default function SignupPage() {
           <div>
             <label
               htmlFor="name"
-              className="mb-1 block text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
+              style={{
+                display: "block",
+                marginBottom: 6,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--text-secondary)",
+              }}
             >
               Name
             </label>
@@ -57,21 +104,38 @@ export default function SignupPage() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--accent)]"
-              style={{
-                backgroundColor: "var(--bg-secondary)",
-                borderColor: "var(--border)",
-                color: "var(--text-primary)",
-              }}
               placeholder="Your name"
+              style={{
+                width: "100%",
+                backgroundColor: "var(--bg-input)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                color: "var(--text-primary)",
+                padding: "10px 12px",
+                fontSize: 14,
+                outline: "none",
+                transition: "border-color 150ms ease",
+                fontFamily: "inherit",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "var(--accent)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "var(--border)";
+              }}
             />
           </div>
 
           <div>
             <label
               htmlFor="email"
-              className="mb-1 block text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
+              style={{
+                display: "block",
+                marginBottom: 6,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--text-secondary)",
+              }}
             >
               Email
             </label>
@@ -81,21 +145,38 @@ export default function SignupPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--accent)]"
-              style={{
-                backgroundColor: "var(--bg-secondary)",
-                borderColor: "var(--border)",
-                color: "var(--text-primary)",
-              }}
               placeholder="you@example.com"
+              style={{
+                width: "100%",
+                backgroundColor: "var(--bg-input)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                color: "var(--text-primary)",
+                padding: "10px 12px",
+                fontSize: 14,
+                outline: "none",
+                transition: "border-color 150ms ease",
+                fontFamily: "inherit",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "var(--accent)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "var(--border)";
+              }}
             />
           </div>
 
           <div>
             <label
               htmlFor="password"
-              className="mb-1 block text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
+              style={{
+                display: "block",
+                marginBottom: 6,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--text-secondary)",
+              }}
             >
               Password
             </label>
@@ -106,38 +187,79 @@ export default function SignupPage() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--accent)]"
-              style={{
-                backgroundColor: "var(--bg-secondary)",
-                borderColor: "var(--border)",
-                color: "var(--text-primary)",
-              }}
               placeholder="Min 8 characters"
+              style={{
+                width: "100%",
+                backgroundColor: "var(--bg-input)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                color: "var(--text-primary)",
+                padding: "10px 12px",
+                fontSize: 14,
+                outline: "none",
+                transition: "border-color 150ms ease",
+                fontFamily: "inherit",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "var(--accent)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "var(--border)";
+              }}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-            style={{ backgroundColor: "var(--accent)" }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "var(--accent-hover)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "var(--accent)")
-            }
+            className="hover-transition"
+            style={{
+              width: "100%",
+              backgroundColor: "var(--accent)",
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              color: "#fff",
+              padding: "10px 16px",
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.5 : 1,
+              fontFamily: "inherit",
+              transition: "background 150ms ease, opacity 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.backgroundColor = "var(--accent-hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--accent)";
+            }}
           >
             {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+        <p
+          style={{
+            marginTop: 24,
+            textAlign: "center",
+            fontSize: 13,
+            color: "var(--text-muted)",
+          }}
+        >
           Already have an account?{" "}
           <Link
             href="/login"
-            className="font-medium transition-colors hover:underline"
-            style={{ color: "var(--accent)" }}
+            style={{
+              color: "var(--accent)",
+              textDecoration: "none",
+              fontWeight: 500,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.textDecoration = "underline";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.textDecoration = "none";
+            }}
           >
             Sign in
           </Link>

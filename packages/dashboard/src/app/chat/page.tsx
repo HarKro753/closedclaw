@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect, type FormEvent, type KeyboardEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useChat } from "@/hooks/useChat";
+import { Sidebar } from "@/components/Sidebar";
+import { ChatWelcome } from "@/components/ChatWelcome";
+import { MessageBubble } from "@/components/MessageBubble";
+import { ChatInput } from "@/components/ChatInput";
+import { StreamingDots } from "@/components/StreamingDots";
 
 export default function ChatPage() {
   const [input, setInput] = useState("");
@@ -40,11 +45,12 @@ export default function ChatPage() {
     sendMessage(trimmed);
   }
 
-  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
+  function handleSuggestionClick(text: string) {
+    setInput(text);
+  }
+
+  function handleNewChat() {
+    clearHistory();
   }
 
   function handleLogout() {
@@ -54,7 +60,16 @@ export default function ChatPage() {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div
+        style={{
+          display: "flex",
+          height: "100vh",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
+          backgroundColor: "var(--bg-base)",
+        }}
+      >
         <div className="loading-dot" />
         <div className="loading-dot" />
         <div className="loading-dot" />
@@ -65,127 +80,66 @@ export default function ChatPage() {
   if (!token) return null;
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <aside
-        className="flex w-64 flex-col border-r"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
-        <div className="border-b p-4" style={{ borderColor: "var(--border)" }}>
-          <h1 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-            ClosedClaw
-          </h1>
-          <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-            Your personal AI agent
-          </p>
-        </div>
-
-        <div className="flex-1 p-4">
-          <div className="mb-4">
-            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-              {user?.name}
-            </p>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {user?.email}
-            </p>
-          </div>
-
-          {user?.isAdmin && (
-            <button
-              onClick={() => router.push("/admin")}
-              className="mb-2 w-full rounded-md border px-3 py-2 text-left text-sm transition-colors"
-              style={{
-                borderColor: "var(--border)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              Admin Panel
-            </button>
-          )}
-
-          <button
-            onClick={clearHistory}
-            className="w-full rounded-md border px-3 py-2 text-left text-sm transition-colors"
-            style={{
-              borderColor: "var(--border)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Clear history
-          </button>
-        </div>
-
-        <div className="border-t p-4" style={{ borderColor: "var(--border)" }}>
-          <button
-            onClick={handleLogout}
-            className="w-full rounded-md px-3 py-2 text-sm transition-colors"
-            style={{
-              color: "var(--text-muted)",
-            }}
-          >
-            Sign out
-          </button>
-        </div>
-      </aside>
+    <div style={{ display: "flex", height: "100vh" }}>
+      <Sidebar
+        userName={user?.name}
+        userEmail={user?.email}
+        isAdmin={user?.isAdmin ?? false}
+        onNewChat={handleNewChat}
+        onLogout={handleLogout}
+      />
 
       {/* Chat area */}
-      <main className="flex flex-1 flex-col" style={{ backgroundColor: "var(--bg-primary)" }}>
+      <main
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: "var(--bg-base)",
+          minWidth: 0,
+        }}
+      >
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div style={{ flex: 1, overflowY: "auto" }}>
           {historyLoading ? (
-            <div className="flex h-full items-center justify-center gap-1">
+            <div
+              style={{
+                display: "flex",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+              }}
+            >
               <div className="loading-dot" />
               <div className="loading-dot" />
               <div className="loading-dot" />
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center">
-              <p className="text-lg font-medium" style={{ color: "var(--text-secondary)" }}>
-                Start a conversation
-              </p>
-              <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-                Your agent is ready. Say hello.
-              </p>
-            </div>
+            <ChatWelcome
+              userName={user?.name}
+              onSuggestionClick={handleSuggestionClick}
+            />
           ) : (
-            <div className="mx-auto max-w-3xl space-y-4">
+            <div
+              style={{
+                maxWidth: 768,
+                margin: "0 auto",
+                padding: "24px 24px 0",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
               {messages.map((msg) => (
-                <div
+                <MessageBubble
                   key={msg.id}
-                  data-testid={msg.role === "user" ? "user-message" : "agent-message"}
-                  className={`animate-fade-in flex ${
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className="max-w-[80%] rounded-lg px-4 py-3 text-sm leading-relaxed"
-                    style={{
-                      backgroundColor:
-                        msg.role === "user"
-                          ? "var(--accent)"
-                          : "var(--bg-secondary)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                </div>
+                  role={msg.role}
+                  content={msg.content}
+                  testId={msg.role === "user" ? "user-message" : "agent-message"}
+                />
               ))}
-              {sending && (
-                <div className="flex justify-start">
-                  <div
-                    className="flex gap-1 rounded-lg px-4 py-3"
-                    style={{ backgroundColor: "var(--bg-secondary)" }}
-                  >
-                    <div className="loading-dot" />
-                    <div className="loading-dot" />
-                    <div className="loading-dot" />
-                  </div>
-                </div>
-              )}
+              {sending && <StreamingDots />}
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -194,45 +148,29 @@ export default function ChatPage() {
         {/* Error */}
         {error && (
           <div
-            className="mx-4 mb-2 rounded-md px-3 py-2 text-sm"
-            style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "var(--error)" }}
+            style={{
+              margin: "0 24px 8px",
+              maxWidth: 768,
+              alignSelf: "center",
+              width: "100%",
+              backgroundColor: "rgba(239,68,68,0.1)",
+              color: "var(--error)",
+              borderRadius: "var(--radius-sm)",
+              padding: "8px 12px",
+              fontSize: 13,
+            }}
           >
             {error}
           </div>
         )}
 
         {/* Input */}
-        <div className="border-t p-4" style={{ borderColor: "var(--border)" }}>
-          <form
-            onSubmit={handleSubmit}
-            className="mx-auto flex max-w-3xl gap-2"
-          >
-            <textarea
-              data-testid="chat-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              rows={1}
-              disabled={sending}
-              className="flex-1 resize-none rounded-md border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--accent)] disabled:opacity-50"
-              style={{
-                backgroundColor: "var(--bg-secondary)",
-                borderColor: "var(--border)",
-                color: "var(--text-primary)",
-              }}
-            />
-            <button
-              data-testid="send-button"
-              type="submit"
-              disabled={sending || input.trim().length === 0}
-              className="rounded-md px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "var(--accent)" }}
-            >
-              Send
-            </button>
-          </form>
-        </div>
+        <ChatInput
+          value={input}
+          onChange={setInput}
+          onSubmit={handleSubmit}
+          disabled={sending}
+        />
       </main>
     </div>
   );
