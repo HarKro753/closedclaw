@@ -1,6 +1,7 @@
 {
   "name": "@closedclaw/server",
   "version": "1.0.0",
+  "type": "module",
   "description": "ClosedClaw API server - auth + agent orchestration",
   "main": "dist/index.js",
   "scripts": {

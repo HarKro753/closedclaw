@@ -131,12 +131,11 @@ Volumes: `data/` directory mounted into server for SQLite + agent workspaces.
 
 ### Environment variables
 ```
-ANTHROPIC_API_KEY=    required
 JWT_SECRET=           required (random string)
 ADMIN_EMAILS=         comma-separated admin emails
 BRAVE_API_KEY=        optional (enables web search tool)
-CLAUDE_MODEL=         optional (default: claude-sonnet-4-5)
 PORT=                 optional (default: 3900)
+# Auth via ~/.claude (claude-agent-sdk) — no API key needed
 ```
 
 ## File structure

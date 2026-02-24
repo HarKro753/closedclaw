@@ -1,109 +1,9 @@
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, mkdirSync } from "node:fs";
 import { join, resolve, relative } from "node:path";
-import type Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
+import { tool, createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 
-type Tool = Anthropic.Tool;
-
-export function getToolDefinitions(): Tool[] {
-  return [
-    {
-      name: "read_memory",
-      description:
-        "Read your persistent memory file. Use this to recall information saved from previous conversations.",
-      input_schema: {
-        type: "object" as const,
-        properties: {},
-        required: [],
-      },
-    },
-    {
-      name: "write_memory",
-      description:
-        "Write to your persistent memory file. Use 'append' mode to add new information, or 'overwrite' to replace all memory content. Prefer append for adding new facts.",
-      input_schema: {
-        type: "object" as const,
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to write to memory",
-          },
-          mode: {
-            type: "string",
-            enum: ["append", "overwrite"],
-            description:
-              "Whether to append to existing memory or overwrite it entirely",
-          },
-        },
-        required: ["content", "mode"],
-      },
-    },
-    {
-      name: "read_file",
-      description:
-        "Read a file from your personal workspace. Returns the file contents as text.",
-      input_schema: {
-        type: "object" as const,
-        properties: {
-          path: {
-            type: "string",
-            description: "Relative path to the file within your workspace",
-          },
-        },
-        required: ["path"],
-      },
-    },
-    {
-      name: "write_file",
-      description:
-        "Write a file to your personal workspace. Creates the file if it does not exist, overwrites if it does.",
-      input_schema: {
-        type: "object" as const,
-        properties: {
-          path: {
-            type: "string",
-            description: "Relative path to the file within your workspace",
-          },
-          content: {
-            type: "string",
-            description: "The content to write to the file",
-          },
-        },
-        required: ["path", "content"],
-      },
-    },
-    {
-      name: "list_files",
-      description:
-        "List files and directories in your personal workspace. Returns names with trailing / for directories.",
-      input_schema: {
-        type: "object" as const,
-        properties: {
-          path: {
-            type: "string",
-            description:
-              "Relative path within the workspace to list. Defaults to root of workspace.",
-          },
-        },
-        required: [],
-      },
-    },
-    {
-      name: "web_search",
-      description:
-        "Search the web for information. Only available when the BRAVE_API_KEY environment variable is configured.",
-      input_schema: {
-        type: "object" as const,
-        properties: {
-          query: {
-            type: "string",
-            description: "The search query",
-          },
-        },
-        required: ["query"],
-      },
-    },
-  ];
-}
+const SERVER_NAME = "closedclaw";
 
 function validatePath(workspaceDir: string, requestedPath: string): string {
   const absoluteWorkspace = resolve(workspaceDir);
@@ -131,7 +31,7 @@ export async function executeTool(
   memoryFile: string
 ): Promise<string> {
   try {
-  return await executeToolInner(toolName, input, workspaceDir, memoryFile);
+    return await executeToolInner(toolName, input, workspaceDir, memoryFile);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Error: ${message}`;
@@ -274,4 +174,96 @@ interface BraveSearchResponse {
   web?: {
     results: BraveSearchResult[];
   };
+}
+
+function buildSdkTools(workspaceDir: string, memoryFile: string) {
+  return [
+    tool(
+      "read_memory",
+      "Read your persistent memory file. Use this to recall information saved from previous conversations.",
+      {},
+      async () => {
+        const result = await executeTool("read_memory", {}, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      }
+    ),
+    tool(
+      "write_memory",
+      "Write to your persistent memory file. Use 'append' mode to add new information, or 'overwrite' to replace all memory content. Prefer append for adding new facts.",
+      {
+        content: z.string().describe("The content to write to memory"),
+        mode: z.enum(["append", "overwrite"]).describe("Whether to append to existing memory or overwrite it entirely"),
+      },
+      async (args: { content: string; mode: "append" | "overwrite" }) => {
+        const result = await executeTool("write_memory", args, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      }
+    ),
+    tool(
+      "read_file",
+      "Read a file from your personal workspace. Returns the file contents as text.",
+      {
+        path: z.string().describe("Relative path to the file within your workspace"),
+      },
+      async (args: { path: string }) => {
+        const result = await executeTool("read_file", args, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      }
+    ),
+    tool(
+      "write_file",
+      "Write a file to your personal workspace. Creates the file if it does not exist, overwrites if it does.",
+      {
+        path: z.string().describe("Relative path to the file within your workspace"),
+        content: z.string().describe("The content to write to the file"),
+      },
+      async (args: { path: string; content: string }) => {
+        const result = await executeTool("write_file", args, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      }
+    ),
+    tool(
+      "list_files",
+      "List files and directories in your personal workspace. Returns names with trailing / for directories.",
+      {
+        path: z.string().optional().describe("Relative path within the workspace to list. Defaults to root of workspace."),
+      },
+      async (args: { path?: string }) => {
+        const result = await executeTool("list_files", args, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      }
+    ),
+    tool(
+      "web_search",
+      "Search the web for information. Only available when the BRAVE_API_KEY environment variable is configured.",
+      {
+        query: z.string().describe("The search query"),
+      },
+      async (args: { query: string }) => {
+        const result = await executeTool("web_search", args, workspaceDir, memoryFile);
+        return { content: [{ type: "text" as const, text: result }] };
+      }
+    ),
+  ];
+}
+
+export function createToolServer(workspaceDir: string, memoryFile: string) {
+  const sdkTools = buildSdkTools(workspaceDir, memoryFile);
+  return createSdkMcpServer({
+    name: SERVER_NAME,
+    version: "1.0.0",
+    tools: sdkTools,
+  });
+}
+
+export function getAllowedToolNames(): string[] {
+  const toolNames = [
+    "read_memory",
+    "write_memory",
+    "read_file",
+    "write_file",
+    "list_files",
+    "web_search",
+  ];
+  return toolNames.map((name) => `mcp__${SERVER_NAME}__${name}`);
 }

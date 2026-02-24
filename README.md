@@ -25,7 +25,7 @@ cd closedclaw
 
 # Copy environment variables
 cp .env.example .env
-# Edit .env with your ANTHROPIC_API_KEY and JWT_SECRET
+# Edit .env with your JWT_SECRET (auth via ~/.claude — no API key needed)
 
 # Start with Docker
 docker compose up
@@ -51,12 +51,12 @@ npm run dev:dashboard
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | — | Your Anthropic API key |
 | `JWT_SECRET` | Yes | — | Random string for signing JWTs |
 | `ADMIN_EMAILS` | No | — | Comma-separated admin email addresses |
 | `BRAVE_API_KEY` | No | — | Brave Search API key (enables web search tool) |
-| `CLAUDE_MODEL` | No | `claude-sonnet-4-5` | Claude model to use |
 | `PORT` | No | `3900` | Server port |
+
+> **Note:** Auth is handled by `@anthropic-ai/claude-agent-sdk` via `~/.claude` (set by `Claude Code init`). No `ANTHROPIC_API_KEY` needed.
 
 ## V1 Features
 

@@ -1,7 +1,8 @@
 {
   "name": "@closedclaw/agent",
   "version": "1.0.0",
-  "description": "Claude SDK agent runtime for ClosedClaw",
+  "type": "module",
+  "description": "Claude agent-sdk runtime for ClosedClaw",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -10,7 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0"
+    "@anthropic-ai/claude-agent-sdk": "^0.2.52",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

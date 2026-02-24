@@ -1,5 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { getToolDefinitions, executeTool } from "./tools.js";
+import { query } from "@anthropic-ai/claude-agent-sdk";
+import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import { createToolServer, getAllowedToolNames } from "./tools.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 
 export interface Message {
@@ -16,75 +17,78 @@ export interface RunAgentOptions {
   memoryFile: string;
 }
 
-const MAX_ITERATIONS = 15;
+const MAX_TURNS = 15;
 
 export async function runAgent(opts: RunAgentOptions): Promise<string> {
   const { userName, message, history, workspaceDir, memoryFile } = opts;
 
-  const model = process.env["CLAUDE_MODEL"] ?? "claude-sonnet-4-5";
-  const client = new Anthropic();
-
   const systemPrompt = buildSystemPrompt(userName);
-  const tools = getToolDefinitions();
+  const mcpServer = createToolServer(workspaceDir, memoryFile);
+  const allowedTools = getAllowedToolNames();
 
-  const messages: Anthropic.MessageParam[] = [
-    ...history.map((msg) => ({
-      role: msg.role as "user" | "assistant",
-      content: msg.content,
-    })),
-    { role: "user", content: message },
-  ];
+  const prompt = formatPrompt(history, message);
 
-  let iterations = 0;
+  const stream = query({
+    prompt,
+    options: {
+      systemPrompt,
+      model: "sonnet",
+      maxTurns: MAX_TURNS,
+      mcpServers: { closedclaw: mcpServer },
+      allowedTools,
+      tools: [],
+      persistSession: false,
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
+    },
+  });
 
-  while (iterations < MAX_ITERATIONS) {
-    iterations++;
+  return await collectResponse(stream);
+}
 
-    const response = await client.messages.create({
-      model,
-      max_tokens: 4096,
-      system: systemPrompt,
-      tools,
-      messages,
-    });
+function formatPrompt(history: Message[], currentMessage: string): string {
+  if (history.length === 0) {
+    return currentMessage;
+  }
 
-    if (response.stop_reason === "end_turn" || !hasToolUse(response)) {
-      const textContent = response.content.find(
-        (block) => block.type === "text"
-      );
-      return textContent ? textContent.text : "";
-    }
+  const historyText = history
+    .map((msg) => `[${msg.role}]: ${msg.content}`)
+    .join("\n\n");
 
-    const assistantContent = response.content;
-    messages.push({ role: "assistant", content: assistantContent });
+  return `Previous conversation:\n${historyText}\n\n[user]: ${currentMessage}`;
+}
 
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+async function collectResponse(
+  stream: AsyncIterable<SDKMessage>
+): Promise<string> {
+  const textParts: string[] = [];
 
-    for (const block of assistantContent) {
-      if (block.type === "tool_use") {
-        const result = await executeTool(
-          block.name,
-          block.input as Record<string, string>,
-          workspaceDir,
-          memoryFile
-        );
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: result,
-        });
+  for await (const message of stream) {
+    if (message.type === "assistant") {
+      for (const block of message.message.content) {
+        if (block.type === "text") {
+          textParts.push(block.text);
+        }
       }
     }
 
-    messages.push({ role: "user", content: toolResults });
+    if (message.type === "result") {
+      if (message.subtype !== "success") {
+        const errorDetail =
+          "error" in message && typeof message.error === "string"
+            ? message.error
+            : "Agent execution failed";
+        throw new Error(errorDetail);
+      }
+    }
   }
 
-  return "I've reached my processing limit for this request. Please try a simpler question or break your request into smaller steps.";
+  if (textParts.length === 0) {
+    return "";
+  }
+
+  return textParts[textParts.length - 1] ?? "";
 }
 
-function hasToolUse(response: Anthropic.Message): boolean {
-  return response.content.some((block) => block.type === "tool_use");
-}
-
-export { getToolDefinitions, executeTool } from "./tools.js";
+export { executeTool, createToolServer, getAllowedToolNames } from "./tools.js";
 export { buildSystemPrompt } from "./system-prompt.js";
