@@ -1,5 +1,5 @@
 {
-  "name": "closedclaw",
+  "name": "@closedclaw/cli",
   "version": "0.2.0",
   "type": "module",
   "description": "Personal AI agents for everyone — local dev CLI",
