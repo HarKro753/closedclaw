@@ -7,7 +7,7 @@ import { authMiddleware } from "../middleware/auth.js";
 import { adminMiddleware } from "../middleware/admin.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { getAgentPaths } from "../agent-provisioner.js";
-import { runAgent, runAgentStream } from "../agent/index.js";
+import { getGatewayClient } from "../lib/openclaw-client.js";
 
 interface UserWithStats {
   id: string;
@@ -28,6 +28,14 @@ interface AdminTaskRow {
   response: string | null;
   status: string;
   created_at: string;
+}
+
+function getSessionKeyForUser(db: Database, userId: string): string {
+  const row = db
+    .prepare("SELECT openclaw_session_key FROM agents WHERE user_id = ?")
+    .get(userId) as { openclaw_session_key?: string } | undefined;
+
+  return row?.openclaw_session_key ?? `closedclaw:user:${userId}`;
 }
 
 export function createAdminRouter(db: Database): Router {
@@ -206,12 +214,6 @@ export function createAdminRouter(db: Database): Router {
       return;
     }
 
-    const paths = getAgentPaths(db, userId);
-    if (!paths) {
-      res.status(404).json({ error: "Agent not found" });
-      return;
-    }
-
     const adminId = req.user?.userId ?? "unknown";
     const taskId = uuid();
 
@@ -220,27 +222,46 @@ export function createAdminRouter(db: Database): Router {
     ).run(taskId, adminId, userId, message.trim());
 
     try {
-      const response = await runAgent({
-        userId,
-        message: message.trim(),
-        history: [],
-        workspaceDir: paths.workspaceDir,
-        memoryFile: paths.memoryFile,
-      });
+      const gateway = getGatewayClient();
+      const sessionKey = getSessionKeyForUser(db, userId);
 
-      db.prepare(
-        "UPDATE admin_tasks SET response = ?, status = 'completed' WHERE id = ?"
-      ).run(response, taskId);
+      const historyBefore = await gateway.getChatHistory(sessionKey, 100);
+      const assistantCountBefore = historyBefore.filter(m => m.role === "assistant").length;
 
-      res.json({ response, userId, taskId });
+      await gateway.sendMessage(sessionKey, message.trim());
+
+      let response = "";
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const history = await gateway.getChatHistory(sessionKey, 100);
+        const assistantMessages = history.filter(m => m.role === "assistant");
+        if (assistantMessages.length > assistantCountBefore) {
+          response = assistantMessages[assistantMessages.length - 1]?.content ?? "";
+          break;
+        }
+      }
+
+      if (response) {
+        db.prepare(
+          "UPDATE admin_tasks SET response = ?, status = 'completed' WHERE id = ?"
+        ).run(response, taskId);
+
+        res.json({ response, userId, taskId });
+      } else {
+        db.prepare(
+          "UPDATE admin_tasks SET status = 'error', response = ? WHERE id = ?"
+        ).run("Agent response timeout", taskId);
+
+        res.status(504).json({ error: "Agent response timeout" });
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Agent error";
+      const msg = err instanceof Error ? err.message : "Gateway error";
 
       db.prepare(
         "UPDATE admin_tasks SET response = ?, status = 'error' WHERE id = ?"
       ).run(msg, taskId);
 
-      res.status(500).json({ error: msg });
+      res.status(502).json({ error: "Gateway unavailable. Make sure OpenClaw is running." });
     }
   });
 
@@ -250,12 +271,6 @@ export function createAdminRouter(db: Database): Router {
 
     if (!message?.trim()) {
       res.status(400).json({ error: "Message is required" });
-      return;
-    }
-
-    const paths = getAgentPaths(db, userId);
-    if (!paths) {
-      res.status(404).json({ error: "Agent not found" });
       return;
     }
 
@@ -271,34 +286,72 @@ export function createAdminRouter(db: Database): Router {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    let fullResponse = "";
-
     try {
-      for await (const chunk of runAgentStream({
-        userId,
-        message: message.trim(),
-        history: [],
-        workspaceDir: paths.workspaceDir,
-        memoryFile: paths.memoryFile,
-      })) {
-        fullResponse += chunk;
-        res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
-      }
+      const gateway = getGatewayClient();
+      await gateway.connect();
 
-      db.prepare(
-        "UPDATE admin_tasks SET response = ?, status = 'completed' WHERE id = ?"
-      ).run(fullResponse, taskId);
+      const sessionKey = getSessionKeyForUser(db, userId);
 
-      res.write(`data: ${JSON.stringify({ type: "done", taskId })}\n\n`);
-      res.end();
+      let fullResponse = "";
+      let resolved = false;
+
+      const unsub = gateway.onEvent("message.part", (data) => {
+        const part = data as { sessionKey?: string; text?: string };
+        if (part.sessionKey !== sessionKey) return;
+        if (part.text) {
+          fullResponse += part.text;
+          res.write(`data: ${JSON.stringify({ type: "chunk", content: part.text })}\n\n`);
+        }
+      });
+
+      const unsubDone = gateway.onEvent("message.completed", (data) => {
+        const evt = data as { sessionKey?: string };
+        if (evt.sessionKey !== sessionKey) return;
+        if (!resolved) {
+          resolved = true;
+          unsub();
+          unsubDone();
+
+          db.prepare(
+            "UPDATE admin_tasks SET response = ?, status = 'completed' WHERE id = ?"
+          ).run(fullResponse, taskId);
+
+          res.write(`data: ${JSON.stringify({ type: "done", taskId })}\n\n`);
+          res.end();
+        }
+      });
+
+      await gateway.sendMessage(sessionKey, message.trim());
+
+      setTimeout(async () => {
+        if (!resolved) {
+          resolved = true;
+          unsub();
+          unsubDone();
+
+          const history = await gateway.getChatHistory(sessionKey, 10).catch(() => []);
+          const lastAssistant = history.filter(m => m.role === "assistant").pop();
+          if (lastAssistant?.content && !fullResponse) {
+            fullResponse = lastAssistant.content;
+            res.write(`data: ${JSON.stringify({ type: "chunk", content: fullResponse })}\n\n`);
+          }
+
+          db.prepare(
+            "UPDATE admin_tasks SET response = ?, status = 'completed' WHERE id = ?"
+          ).run(fullResponse || "No response received", taskId);
+
+          res.write(`data: ${JSON.stringify({ type: "done", taskId })}\n\n`);
+          res.end();
+        }
+      }, 60000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Agent error";
+      const msg = err instanceof Error ? err.message : "Gateway error";
 
       db.prepare(
         "UPDATE admin_tasks SET response = ?, status = 'error' WHERE id = ?"
       ).run(msg, taskId);
 
-      res.write(`data: ${JSON.stringify({ type: "error", message: msg })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "error", message: "Gateway unavailable" })}\n\n`);
       res.end();
     }
   });

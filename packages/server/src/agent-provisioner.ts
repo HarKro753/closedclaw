@@ -1,13 +1,22 @@
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Database } from "bun:sqlite";
 import { v4 as uuid } from "uuid";
-import {
-  DEFAULT_SOUL_MD,
-  DEFAULT_AGENT_MD,
-  DEFAULT_MEMORY_MD,
-  buildDefaultUserMd,
-} from "./agent/index.js";
+
+const DEFAULTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "agent", "defaults");
+
+function readDefaultFile(name: string): string {
+  return readFileSync(join(DEFAULTS_DIR, name), "utf-8");
+}
+
+function buildDefaultUserMd(name: string, email: string): string {
+  const template = readDefaultFile("USER.md");
+  return template
+    .replace("{{NAME}}", name)
+    .replace("{{EMAIL}}", email)
+    .replace("{{DATE}}", new Date().toISOString().slice(0, 10));
+}
 
 function getDataDir(): string {
   return process.env["DATA_DIR"] ?? "data";
@@ -44,14 +53,14 @@ export function provisionAgent(
     mkdirSync(dailyMemoryDir, { recursive: true });
   }
 
-  writeFileSync(join(agentDir, "SOUL.md"), DEFAULT_SOUL_MD, "utf-8");
+  writeFileSync(join(agentDir, "SOUL.md"), readDefaultFile("SOUL.md"), "utf-8");
   writeFileSync(
     join(agentDir, "USER.md"),
     buildDefaultUserMd(options.userName, options.userEmail),
     "utf-8"
   );
-  writeFileSync(join(agentDir, "AGENT.md"), DEFAULT_AGENT_MD, "utf-8");
-  writeFileSync(join(agentDir, "MEMORY.md"), DEFAULT_MEMORY_MD, "utf-8");
+  writeFileSync(join(agentDir, "AGENT.md"), readDefaultFile("AGENT.md"), "utf-8");
+  writeFileSync(join(agentDir, "MEMORY.md"), readDefaultFile("MEMORY.md"), "utf-8");
 
   if (!existsSync(memoryFile)) {
     writeFileSync(memoryFile, "", "utf-8");

@@ -11,4 +11,7 @@ export function runMigrations(db: Database): void {
   db.exec(CREATE_AGENTS_TABLE);
   db.exec(CREATE_MESSAGES_TABLE);
   db.exec(CREATE_ADMIN_TASKS_TABLE);
+
+  try { db.exec("ALTER TABLE agents ADD COLUMN openclaw_agent_id TEXT"); } catch { /* already exists */ }
+  try { db.exec("ALTER TABLE agents ADD COLUMN openclaw_session_key TEXT"); } catch { /* already exists */ }
 }

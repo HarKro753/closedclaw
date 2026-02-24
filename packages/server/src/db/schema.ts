@@ -14,6 +14,8 @@ export const CREATE_AGENTS_TABLE = `
   CREATE TABLE IF NOT EXISTS agents (
     id TEXT PRIMARY KEY,
     user_id TEXT UNIQUE NOT NULL,
+    openclaw_agent_id TEXT,
+    openclaw_session_key TEXT,
     workspace_dir TEXT NOT NULL,
     memory_file TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
