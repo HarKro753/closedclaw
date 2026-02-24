@@ -1,14 +1,39 @@
 {
-  "name": "@closedclaw/cli",
-  "version": "1.0.0",
+  "name": "closedclaw",
+  "version": "0.2.0",
   "type": "module",
-  "description": "ClosedClaw CLI — local agent REPL for development",
+  "description": "Personal AI agents for everyone — local dev CLI",
   "main": "dist/index.js",
+  "bin": {
+    "closedclaw": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HarKro753/closedclaw.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/HarKro753/closedclaw#cli",
+  "keywords": [
+    "ai",
+    "agent",
+    "cli",
+    "claude",
+    "repl",
+    "closedclaw"
+  ],
+  "license": "MIT",
   "dependencies": {
     "@closedclaw/agent": "*"
   },

@@ -2,106 +2,125 @@
 
 # ClosedClaw
 
-**Every person deserves their own AI agent.**
+**Personal AI agents for everyone.**
 
 [![npm version](https://img.shields.io/npm/v/closedclaw)](https://www.npmjs.com/package/closedclaw)
-[![Docker](https://img.shields.io/badge/docker-ready-blue)](https://github.com/anomalyco/closedclaw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/docker-compose-blue?logo=docker)](https://github.com/HarKro753/closedclaw)
 
 </div>
 
 ---
 
-ClosedClaw is an organizational multi-agent OS. Every member of your team gets a personal AI agent with its own memory, workspace, and tools — accessible through a clean web dashboard. Self-hosted, open source, and ready for production.
+ClosedClaw is a self-hosted multi-agent platform. Every user gets a personal AI agent with its own memory, workspace, and skills — managed through a web dashboard or local CLI. Deploy with Docker Compose, develop locally with `npx closedclaw`.
 
-<!-- screenshot -->
+## Features
+
+- **One agent per user** — each agent has an isolated workspace and persistent memory
+- **Memory system** — agents retain context across conversations via `MEMORY.md`
+- **Skill system** — install reusable skill files (global or per-agent) that shape agent behavior
+- **Web dashboard** — responsive chat UI with admin panel for user and agent management
+- **CLI for local dev** — interactive REPL with slash commands (`/memory`, `/soul`, `/skills`, `/clear`)
+- **Web search** — optional Brave Search integration for grounded responses
+- **Self-hosted** — runs entirely on your infrastructure with `docker compose up`
 
 ## Quick Start
 
 ```bash
-# Clone the repo
-git clone https://github.com/anomalyco/closedclaw.git
+git clone https://github.com/HarKro753/closedclaw.git
 cd closedclaw
 
-# Copy environment variables
 cp .env.example .env
-# Edit .env with your JWT_SECRET (auth via ~/.claude — no API key needed)
+# Set JWT_SECRET in .env (auth uses ~/.claude — no API key needed)
 
-# Start with Docker
 docker compose up
 ```
 
 Dashboard: [http://localhost:3901](http://localhost:3901) | API: [http://localhost:3900](http://localhost:3900)
 
-## Local Development
+## CLI
+
+For local development and testing, use the CLI package directly:
 
 ```bash
-# Install dependencies
-npm install
+# Install globally
+npm install -g closedclaw
 
-# Build the agent package first (server depends on it)
-npm run build:agent
+# Start the REPL
+closedclaw
 
-# Start server and dashboard in separate terminals
-npm run dev:server
-npm run dev:dashboard
+# Or run without installing
+npx closedclaw
 ```
 
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `JWT_SECRET` | Yes | — | Random string for signing JWTs |
-| `ADMIN_EMAILS` | No | — | Comma-separated admin email addresses |
-| `BRAVE_API_KEY` | No | — | Brave Search API key (enables web search tool) |
-| `PORT` | No | `3900` | Server port |
-
-> **Note:** Auth is handled by `@anthropic-ai/claude-agent-sdk` via `~/.claude` (set by `Claude Code init`). No `ANTHROPIC_API_KEY` needed.
-
-## V1 Features
-
-- **Personal agents** — Every user gets their own AI agent at signup
-- **Isolated environments** — Each agent has separate workspace and memory
-- **Persistent memory** — Agents remember across conversations
-- **File workspace** — Agents can read/write files in their sandbox
-- **Web search** — Optional Brave Search integration
-- **Admin panel** — View all users, agents, and message counts
-- **Self-hosted** — `docker compose up` runs everything
-- **Clean dashboard** — Responsive chat UI with real-time updates
+The CLI launches an interactive agent session on your machine. It uses the same agent runtime as the server but runs locally with its own workspace and memory. Useful for development, testing skills, and quick interactions without deploying the full stack.
 
 ## Architecture
 
 ```
 closedclaw/
   packages/
-    agent/       → Claude SDK agent runtime (tools + memory)
-    server/      → Express API (auth + agent orchestration + SQLite)
-    dashboard/   → Next.js 15 frontend (login, chat, admin)
+    agent/       → Agent runtime (Claude SDK, tools, memory)
+    server/      → Express API (auth, agent orchestration, SQLite)
+    dashboard/   → Next.js 15 frontend (chat UI, admin panel)
+    cli/         → Local dev REPL (interactive agent session)
 ```
 
-## API Endpoints
+## API Reference
 
 ### Auth
-- `POST /auth/signup` — Create account + provision agent
-- `POST /auth/login` — Sign in, receive JWT
-- `GET /auth/me` — Current user info
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/signup` | Create account and provision agent |
+| `POST` | `/auth/login` | Sign in, receive JWT |
+| `GET` | `/auth/me` | Current user info |
 
 ### Agent
-- `POST /agent/message` — Send message to your agent
-- `GET /agent/history` — Conversation history
-- `DELETE /agent/history` — Clear history
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/agent/message` | Send message to your agent |
+| `GET` | `/agent/history` | Conversation history |
+| `DELETE` | `/agent/history` | Clear history |
+
+### Skills
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/skills` | List global skills |
+| `POST` | `/skills` | Create global skill (admin) |
+| `DELETE` | `/skills/:name` | Delete global skill (admin) |
+| `GET` | `/skills/agent` | List current user's agent skills |
+| `POST` | `/skills/agent` | Add skill to current user's agent |
+| `DELETE` | `/skills/agent/:name` | Remove skill from current user's agent |
 
 ### Admin
-- `GET /admin/users` — List all users with agent status
-- `DELETE /admin/users/:id` — Deactivate a user
 
-## Roadmap
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/admin/users` | List all users with agent status |
+| `DELETE` | `/admin/users/:id` | Deactivate a user |
 
-- **V2** — Agent-to-agent communication
-- **V2** — Shared organizational memory
-- **V2** — Agent skill marketplace
-- **V3** — Multi-model support
-- **V3** — Plugin system for custom tools
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `JWT_SECRET` | Yes | — | Random string for signing JWTs |
+| `ADMIN_EMAILS` | No | — | Comma-separated admin email addresses |
+| `BRAVE_API_KEY` | No | — | Brave Search API key (enables web search tool) |
+| `PORT` | No | `3900` | Server port |
+| `DATA_DIR` | No | `data` | Directory for SQLite database and agent workspaces |
+
+> Auth is handled by `@anthropic-ai/claude-agent-sdk` via `~/.claude`. No `ANTHROPIC_API_KEY` needed.
+
+## Self-Hosting
+
+ClosedClaw runs as two containers (server + dashboard) with a shared data volume for SQLite and agent workspaces. All persistent data lives in the `closedclaw-data` Docker volume. Back up this volume to preserve user accounts, conversation history, and agent memory.
+
+```bash
+docker compose up -d
+```
 
 ## License
 
