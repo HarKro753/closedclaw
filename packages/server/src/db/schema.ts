@@ -14,11 +14,14 @@ export const CREATE_AGENTS_TABLE = `
   CREATE TABLE IF NOT EXISTS agents (
     id TEXT PRIMARY KEY,
     user_id TEXT UNIQUE NOT NULL,
+    gateway_url TEXT,
+    gateway_token TEXT,
     openclaw_agent_id TEXT,
     openclaw_session_key TEXT,
     workspace_dir TEXT NOT NULL,
     memory_file TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'active',
+    status TEXT NOT NULL DEFAULT 'pending',
+    last_connected_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
